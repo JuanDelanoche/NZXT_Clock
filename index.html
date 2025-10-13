@@ -55,7 +55,7 @@
       color: white;
       padding: 1em;
       border-radius: 10px;
-      display: none; /* Masqué par défaut */
+      display: none;
       flex-wrap: wrap;
       gap: 12px;
       font-size: 0.9em;
@@ -144,7 +144,7 @@
     </div>
     <div class="slider-group">
       <label for="size">Taille (%)</label>
-      <input type="range" id="size" min="100" max="400" value="100" />
+      <input type="range" id="size" min="10" max="400" value="100" />
     </div>
     <div class="slider-group">
       <label for="contrast">Contraste</label>
@@ -194,33 +194,24 @@
     const toggleEditBtn = document.getElementById('toggleEdit');
     const controls = document.getElementById('controls');
 
-    // Horloge
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('hours').textContent = String(now.getHours()).padStart(2,'0');
-      document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2,'0');
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
     // Charger options depuis localStorage
     function loadOptions() {
-      const saved = JSON.parse(localStorage.getItem('clockOptions') || '{}');
-      if(saved.brightness) brightnessInput.value = saved.brightness;
-      if(saved.saturation) saturationInput.value = saved.saturation;
-      if(saved.size) sizeInput.value = saved.size;
-      if(saved.contrast) contrastInput.value = saved.contrast;
-      if(saved.colorMode) colorModeSelect.value = saved.colorMode;
-      if(saved.hue) hueInput.value = saved.hue;
-      if(saved.animationIntensity) animationIntensityInput.value = saved.animationIntensity;
-      if(saved.animationSpeed) animationSpeedInput.value = saved.animationSpeed;
-      if(saved.backgroundURL) {
-        backgroundURLInput.value = saved.backgroundURL;
-        document.body.style.background = `url('${saved.backgroundURL}') center/cover no-repeat`;
+      const options = JSON.parse(localStorage.getItem('clockOptions') || '{}');
+      if(options.brightness) brightnessInput.value = options.brightness;
+      if(options.saturation) saturationInput.value = options.saturation;
+      if(options.size) sizeInput.value = options.size;
+      if(options.contrast) contrastInput.value = options.contrast;
+      if(options.colorMode) colorModeSelect.value = options.colorMode;
+      if(options.hue) hueInput.value = options.hue;
+      if(options.animationIntensity) animationIntensityInput.value = options.animationIntensity;
+      if(options.animationSpeed) animationSpeedInput.value = options.animationSpeed;
+      if(options.backgroundURL) {
+        backgroundURLInput.value = options.backgroundURL;
+        document.body.style.background = `url('${options.backgroundURL}') center/cover no-repeat`;
       }
     }
 
-    // Sauvegarder options
+    // Sauvegarder options dans localStorage
     function saveOptions() {
       const options = {
         brightness: brightnessInput.value,
@@ -235,6 +226,15 @@
       };
       localStorage.setItem('clockOptions', JSON.stringify(options));
     }
+
+    // Horloge
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('hours').textContent = String(now.getHours()).padStart(2,'0');
+      document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2,'0');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
     // Styles
     function updateStyles() {
@@ -257,8 +257,8 @@
         clock.classList.add('gradient-text');
 
         const intensity = animationIntensityInput.value / 100;
-        const minSize = 400;
-        const maxSize = 600;
+        const minSize = 400; 
+        const maxSize = 600; 
         const bgSize = minSize + intensity * (maxSize - minSize);
         clock.style.backgroundSize = `${bgSize}% 400%`;
 
@@ -269,10 +269,10 @@
         clock.style.filter = `contrast(${contrast}%) saturate(${saturationInput.value}%) hue-rotate(${hueInput.value}deg)`;
       }
 
-      saveOptions();
+      saveOptions(); // sauvegarde à chaque modification
     }
 
-    // Events
+    // Événements
     [brightnessInput, saturationInput, sizeInput, contrastInput, colorModeSelect, hueInput, animationIntensityInput, animationSpeedInput, backgroundURLInput]
       .forEach(el => el.addEventListener('input', updateStyles));
 
@@ -291,7 +291,6 @@
       }
     });
 
-    // Charger les options au démarrage
     loadOptions();
     updateStyles();
   </script>
