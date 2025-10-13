@@ -45,8 +45,9 @@
     }
 
     #hours { margin: 0; line-height: 1; }
-    #minutes { margin: 0; line-height: 1; font-weight: 600; }
+    #minutes { line-height: 1; font-weight: 600; }
 
+    /* Controls */
     #controls {
       position: fixed;
       bottom: 20px;
@@ -126,12 +127,24 @@
     <input type="range" id="saturation" min="0" max="200" />
   </div>
   <div class="slider-group">
-    <label for="size">Taille (%)</label>
-    <input type="range" id="size" min="20" max="400" />
-  </div>
-  <div class="slider-group">
     <label for="contrast">Contraste</label>
     <input type="range" id="contrast" min="50" max="200" />
+  </div>
+  <div class="slider-group">
+    <label for="hoursWeight">Gras heures</label>
+    <input type="range" id="hoursWeight" min="100" max="900" step="10" />
+  </div>
+  <div class="slider-group">
+    <label for="minutesWeight">Gras minutes</label>
+    <input type="range" id="minutesWeight" min="100" max="900" step="10" />
+  </div>
+  <div class="slider-group">
+    <label for="hoursSize">Taille Heures</label>
+    <input type="range" id="hoursSize" min="20" max="400" value="140">
+  </div>
+  <div class="slider-group">
+    <label for="minutesSize">Taille Minutes</label>
+    <input type="range" id="minutesSize" min="20" max="400" value="100">
   </div>
   <div class="select-group">
     <label for="colorMode">Couleur</label>
@@ -175,15 +188,19 @@
 <script>
 const clock = document.getElementById('clock');
 const background = document.getElementById('background');
-
+const hoursEl = document.getElementById('hours');
+const minutesEl = document.getElementById('minutes');
 const controls = document.getElementById('controls');
 const toggleEditBtn = document.getElementById('toggleEdit');
 
 const inputs = {
   brightness: document.getElementById('brightness'),
   saturation: document.getElementById('saturation'),
-  size: document.getElementById('size'),
   contrast: document.getElementById('contrast'),
+  hoursWeight: document.getElementById('hoursWeight'),
+  minutesWeight: document.getElementById('minutesWeight'),
+  hoursSize: document.getElementById('hoursSize'),
+  minutesSize: document.getElementById('minutesSize'),
   colorMode: document.getElementById('colorMode'),
   hue: document.getElementById('hue'),
   animationIntensity: document.getElementById('animationIntensity'),
@@ -203,8 +220,8 @@ const groups = {
 // Horloge
 function updateClock() {
   const now = new Date();
-  document.getElementById('hours').textContent = String(now.getHours()).padStart(2,'0');
-  document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2,'0');
+  hoursEl.textContent = String(now.getHours()).padStart(2,'0');
+  minutesEl.textContent = String(now.getMinutes()).padStart(2,'0');
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -228,10 +245,15 @@ function saveOptions() {
 
 // Appliquer styles
 function updateStyles() {
-  const scale = inputs.size.value / 100;
-  clock.style.fontSize = `${scale}em`;
-  document.getElementById('hours').style.fontSize = `${14 * scale}em`;
-  document.getElementById('minutes').style.fontSize = `${10 * scale}em`;
+  hoursEl.style.fontSize = inputs.hoursSize.value + "px";
+  minutesEl.style.fontSize = inputs.minutesSize.value + "px";
+
+  hoursEl.style.fontWeight = inputs.hoursWeight.value;
+  minutesEl.style.fontWeight = inputs.minutesWeight.value;
+
+  // Ajustement dynamique de l'espacement minutes
+  const hourSize = parseInt(inputs.hoursSize.value);
+  minutesEl.style.marginTop = `-${Math.floor(hourSize * 0.15)}px`;
 
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
@@ -259,7 +281,6 @@ function updateStyles() {
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
   }
 
-  // Fond
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
 
   saveOptions();
