@@ -55,7 +55,7 @@
       color: white;
       padding: 1em;
       border-radius: 10px;
-      display: flex;
+      display: none; /* Masqué par défaut */
       flex-wrap: wrap;
       gap: 12px;
       font-size: 0.9em;
@@ -84,7 +84,6 @@
       flex: 1;
     }
 
-    /* Dégradé amélioré et animé */
     .gradient-text {
       background: linear-gradient(120deg,
         #ff0040,
@@ -139,7 +138,7 @@
       <label for="brightness">Luminosité</label>
       <input type="range" id="brightness" min="10" max="150" value="70" />
     </div>
-    <div class="slider-group" id="saturationGroup" style="display:none;">
+    <div class="slider-group" id="saturationGroup">
       <label for="saturation">Saturation</label>
       <input type="range" id="saturation" min="0" max="200" value="100" />
     </div>
@@ -155,10 +154,10 @@
       <label for="colorMode">Couleur</label>
       <select id="colorMode">
         <option value="negative">Négatif</option>
-        <option value="gradient">Négatif couleur</option>
+        <option value="gradient">Gradient</option>
       </select>
     </div>
-    <div class="slider-group" id="hueGroup" style="display:none;">
+    <div class="slider-group" id="hueGroup">
       <label for="hue">Teinte</label>
       <input type="range" id="hue" min="0" max="360" value="0" />
     </div>
@@ -176,7 +175,7 @@
     </div>
   </div>
 
-  <button id="toggleEdit">Masquer édition</button>
+  <button id="toggleEdit">Afficher édition</button>
 
   <script>
     const clock = document.getElementById('clock');
@@ -193,72 +192,107 @@
     const animationSpeedInput = document.getElementById('animationSpeed');
     const backgroundURLInput = document.getElementById('backgroundURL');
     const toggleEditBtn = document.getElementById('toggleEdit');
+    const controls = document.getElementById('controls');
 
+    // Horloge
     function updateClock() {
       const now = new Date();
-      document.getElementById('hours').textContent = String(now.getHours()).padStart(2, '0');
-      document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('hours').textContent = String(now.getHours()).padStart(2,'0');
+      document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2,'0');
     }
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Charger options depuis localStorage
+    function loadOptions() {
+      const saved = JSON.parse(localStorage.getItem('clockOptions') || '{}');
+      if(saved.brightness) brightnessInput.value = saved.brightness;
+      if(saved.saturation) saturationInput.value = saved.saturation;
+      if(saved.size) sizeInput.value = saved.size;
+      if(saved.contrast) contrastInput.value = saved.contrast;
+      if(saved.colorMode) colorModeSelect.value = saved.colorMode;
+      if(saved.hue) hueInput.value = saved.hue;
+      if(saved.animationIntensity) animationIntensityInput.value = saved.animationIntensity;
+      if(saved.animationSpeed) animationSpeedInput.value = saved.animationSpeed;
+      if(saved.backgroundURL) {
+        backgroundURLInput.value = saved.backgroundURL;
+        document.body.style.background = `url('${saved.backgroundURL}') center/cover no-repeat`;
+      }
+    }
+
+    // Sauvegarder options
+    function saveOptions() {
+      const options = {
+        brightness: brightnessInput.value,
+        saturation: saturationInput.value,
+        size: sizeInput.value,
+        contrast: contrastInput.value,
+        colorMode: colorModeSelect.value,
+        hue: hueInput.value,
+        animationIntensity: animationIntensityInput.value,
+        animationSpeed: animationSpeedInput.value,
+        backgroundURL: backgroundURLInput.value
+      };
+      localStorage.setItem('clockOptions', JSON.stringify(options));
+    }
+
+    // Styles
     function updateStyles() {
       clock.style.transform = `scale(${sizeInput.value / 100})`;
       const contrast = contrastInput.value;
       const mode = colorModeSelect.value;
 
-      if (mode === 'negative') {
+      if(mode === 'negative') {
         brightnessGroup.style.display = 'flex';
         saturationGroup.style.display = 'none';
         hueGroup.style.display = 'none';
         clock.style.mixBlendMode = 'difference';
         clock.style.color = 'white';
-        clock.classList.remove('gradient-text', 'animated-gradient');
+        clock.classList.remove('gradient-text','animated-gradient');
         clock.style.filter = `brightness(${brightnessInput.value}%) contrast(${contrast}%) saturate(100%)`;
-      } else if (mode === 'gradient') {
+      } else if(mode === 'gradient') {
         brightnessGroup.style.display = 'none';
         saturationGroup.style.display = 'flex';
         hueGroup.style.display = 'flex';
         clock.classList.add('gradient-text');
 
-        // Intensité (0 → peu de variation, 100 → max)
-        const intensity = 1 - animationIntensityInput.value / 100; // inversé
-        clock.style.backgroundSize = `${400 * (1 - 0.5 * intensity)}% 400%`;
+        const intensity = animationIntensityInput.value / 100;
+        const minSize = 400;
+        const maxSize = 600;
+        const bgSize = minSize + intensity * (maxSize - minSize);
+        clock.style.backgroundSize = `${bgSize}% 400%`;
 
-        // Vitesse (0 → statique 25s, 100 → rapide 1s)
-        const speed = 25 - (animationSpeedInput.value / 100) * 24; 
+        const speed = 25 - (animationSpeedInput.value / 100) * 24;
         clock.style.animationDuration = `${speed}s`;
-        clock.classList.add('animated-gradient');
 
+        clock.classList.add('animated-gradient');
         clock.style.filter = `contrast(${contrast}%) saturate(${saturationInput.value}%) hue-rotate(${hueInput.value}deg)`;
       }
+
+      saveOptions();
     }
 
-    brightnessInput.addEventListener('input', updateStyles);
-    saturationInput.addEventListener('input', updateStyles);
-    sizeInput.addEventListener('input', updateStyles);
-    contrastInput.addEventListener('input', updateStyles);
-    colorModeSelect.addEventListener('change', updateStyles);
-    hueInput.addEventListener('input', updateStyles);
-    animationIntensityInput.addEventListener('input', updateStyles);
-    animationSpeedInput.addEventListener('input', updateStyles);
+    // Events
+    [brightnessInput, saturationInput, sizeInput, contrastInput, colorModeSelect, hueInput, animationIntensityInput, animationSpeedInput, backgroundURLInput]
+      .forEach(el => el.addEventListener('input', updateStyles));
+
     backgroundURLInput.addEventListener('input', () => {
       const url = backgroundURLInput.value.trim();
-      if (url) {
-        document.body.style.background = `url('${url}') center/cover no-repeat`;
-      }
+      if(url) document.body.style.background = `url('${url}') center/cover no-repeat`;
     });
 
     toggleEditBtn.addEventListener('click', () => {
-      if (document.getElementById('controls').style.display === 'none') {
-        document.getElementById('controls').style.display = 'flex';
+      if(controls.style.display === 'none') {
+        controls.style.display = 'flex';
         toggleEditBtn.textContent = 'Masquer édition';
       } else {
-        document.getElementById('controls').style.display = 'none';
+        controls.style.display = 'none';
         toggleEditBtn.textContent = 'Afficher édition';
       }
     });
 
+    // Charger les options au démarrage
+    loadOptions();
     updateStyles();
   </script>
 </body>
