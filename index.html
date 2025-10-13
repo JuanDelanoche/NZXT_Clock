@@ -42,11 +42,16 @@
       user-select: none;
       position: relative;
       transition: filter 0.3s ease, color 0.3s ease, background 0.3s ease;
-      line-height: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
-    #hours { margin: 0; }
-    #minutes { margin: 0; }
+    #hours, #minutes {
+      margin: 0;
+      line-height: 1;
+    }
 
     #controls {
       position: fixed;
@@ -109,8 +114,6 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-
-    /* Apparition uniquement au survol du bouton */
     #toggleEdit:hover {
       opacity: 1;
     }
@@ -153,6 +156,10 @@
   <div class="slider-group">
     <label for="minutesSize">Taille Minutes</label>
     <input type="range" id="minutesSize" min="20" max="400" value="100">
+  </div>
+  <div class="slider-group">
+    <label for="lineHeight">Espacement</label>
+    <input type="range" id="lineHeight" min="-0.5" max="2" step="0.01">
   </div>
   <div class="select-group">
     <label for="colorMode">Couleur</label>
@@ -211,6 +218,7 @@ const inputs = {
   minutesWeight: document.getElementById('minutesWeight'),
   hoursSize: document.getElementById('hoursSize'),
   minutesSize: document.getElementById('minutesSize'),
+  lineHeight: document.getElementById('lineHeight'),
   colorMode: document.getElementById('colorMode'),
   hue: document.getElementById('hue'),
   animationIntensity: document.getElementById('animationIntensity'),
@@ -241,6 +249,8 @@ function loadOptions() {
   Object.keys(inputs).forEach(key => {
     if(localStorage.getItem(key) !== null) {
       inputs[key].value = localStorage.getItem(key);
+    } else if(key === "lineHeight") {
+      inputs[key].value = 0; // espacement par défaut
     }
   });
   updateStyles();
@@ -255,13 +265,14 @@ function saveOptions() {
 
 // Appliquer styles
 function updateStyles() {
-  // Taille indépendante
   hoursEl.style.fontSize = inputs.hoursSize.value + "px";
   minutesEl.style.fontSize = inputs.minutesSize.value + "px";
 
-  // Gras indépendant
   hoursEl.style.fontWeight = inputs.hoursWeight.value;
   minutesEl.style.fontWeight = inputs.minutesWeight.value;
+
+  // Espacement
+  hoursEl.style.marginBottom = inputs.lineHeight.value * -50 + "px"; // ajustable pour plus proche/plus loin
 
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
@@ -289,7 +300,6 @@ function updateStyles() {
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
   }
 
-  // Fond
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
 
   saveOptions();
