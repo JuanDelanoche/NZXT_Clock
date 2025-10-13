@@ -42,12 +42,12 @@
       user-select: none;
       position: relative;
       transition: filter 0.3s ease, color 0.3s ease, background 0.3s ease;
+      line-height: 1;
     }
 
-    #hours { margin: 0; line-height: 1; }
-    #minutes { line-height: 1; font-weight: 600; }
+    #hours { margin: 0; }
+    #minutes { margin: 0; }
 
-    /* Controls */
     #controls {
       position: fixed;
       bottom: 20px;
@@ -93,6 +93,7 @@
       100% { background-position: 0% 50%; }
     }
 
+    /* Bouton édition invisible par défaut */
     #toggleEdit {
       position: fixed;
       top: 15px;
@@ -105,6 +106,13 @@
       cursor: pointer;
       font-size: 0.9em;
       z-index: 11;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Apparition uniquement au survol du bouton */
+    #toggleEdit:hover {
+      opacity: 1;
     }
   </style>
 </head>
@@ -188,8 +196,10 @@
 <script>
 const clock = document.getElementById('clock');
 const background = document.getElementById('background');
+
 const hoursEl = document.getElementById('hours');
 const minutesEl = document.getElementById('minutes');
+
 const controls = document.getElementById('controls');
 const toggleEditBtn = document.getElementById('toggleEdit');
 
@@ -245,15 +255,13 @@ function saveOptions() {
 
 // Appliquer styles
 function updateStyles() {
+  // Taille indépendante
   hoursEl.style.fontSize = inputs.hoursSize.value + "px";
   minutesEl.style.fontSize = inputs.minutesSize.value + "px";
 
+  // Gras indépendant
   hoursEl.style.fontWeight = inputs.hoursWeight.value;
   minutesEl.style.fontWeight = inputs.minutesWeight.value;
-
-  // Ajustement dynamique de l'espacement minutes
-  const hourSize = parseInt(inputs.hoursSize.value);
-  minutesEl.style.marginTop = `-${Math.floor(hourSize * 0.15)}px`;
 
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
@@ -281,6 +289,7 @@ function updateStyles() {
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
   }
 
+  // Fond
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
 
   saveOptions();
