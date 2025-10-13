@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Horloge personnalisable</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: url('https://pbs.twimg.com/media/Gg8dWSDXkAEbKjI?format=jpg&name=4096x4096') center/cover no-repeat;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      user-select: none;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #clock {
+      text-align: center;
+      font-weight: 900;
+      transform-origin: center center;
+      transition: transform 0.3s ease, filter 0.3s ease, color 0.3s ease, background 0.3s ease;
+      z-index: 1;
+      opacity: 1;
+      filter: brightness(70%) contrast(100%);
+      mix-blend-mode: difference;
+      color: white;
+      user-select: none;
+      position: relative;
+    }
+
+    #hours {
+      font-size: 14em;
+      margin: 0;
+      line-height: 1;
+    }
+
+    #minutes {
+      font-size: 10em;
+      font-weight: 600;
+      margin: 0;
+      line-height: 1;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 1em;
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.9em;
+      z-index: 10;
+      user-select: none;
+      width: 520px;
+      justify-content: center;
+    }
+
+    .slider-group,
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      flex: 1 1 150px;
+    }
+
+    .slider-group label,
+    .select-group label {
+      width: 90px;
+    }
+
+    .slider-group input[type="range"],
+    .slider-group input[type="text"],
+    .select-group select {
+      flex: 1;
+    }
+
+    /* Dégradé amélioré et animé */
+    .gradient-text {
+      background: linear-gradient(120deg,
+        #ff0040,
+        #ff7b00,
+        #fffb00,
+        #00ff9d,
+        #00c3ff,
+        #7b00ff,
+        #ff00c8
+      );
+      background-size: 400% 400%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: brightness(1.2) contrast(1.2);
+      mix-blend-mode: normal;
+    }
+
+    .animated-gradient {
+      animation: gradientFlow linear infinite;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    #toggleEdit {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      z-index: 11;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="clock">
+    <div id="hours">--</div>
+    <div id="minutes">--</div>
+  </div>
+
+  <div id="controls">
+    <div class="slider-group" id="brightnessGroup">
+      <label for="brightness">Luminosité</label>
+      <input type="range" id="brightness" min="10" max="150" value="70" />
+    </div>
+    <div class="slider-group" id="saturationGroup" style="display:none;">
+      <label for="saturation">Saturation</label>
+      <input type="range" id="saturation" min="0" max="200" value="100" />
+    </div>
+    <div class="slider-group">
+      <label for="size">Taille (%)</label>
+      <input type="range" id="size" min="100" max="400" value="100" />
+    </div>
+    <div class="slider-group">
+      <label for="contrast">Contraste</label>
+      <input type="range" id="contrast" min="50" max="200" value="100" />
+    </div>
+    <div class="select-group">
+      <label for="colorMode">Couleur</label>
+      <select id="colorMode">
+        <option value="negative">Négatif</option>
+        <option value="gradient">Négatif couleur</option>
+      </select>
+    </div>
+    <div class="slider-group" id="hueGroup" style="display:none;">
+      <label for="hue">Teinte</label>
+      <input type="range" id="hue" min="0" max="360" value="0" />
+    </div>
+    <div class="slider-group">
+      <label for="animationIntensity">Intensité</label>
+      <input type="range" id="animationIntensity" min="0" max="100" value="50" />
+    </div>
+    <div class="slider-group">
+      <label for="animationSpeed">Vitesse</label>
+      <input type="range" id="animationSpeed" min="0" max="100" value="50" />
+    </div>
+    <div class="slider-group">
+      <label for="backgroundURL">Fond</label>
+      <input type="text" id="backgroundURL" placeholder="Coller le lien de l'image ici" />
+    </div>
+  </div>
+
+  <button id="toggleEdit">Masquer édition</button>
+
+  <script>
+    const clock = document.getElementById('clock');
+    const brightnessInput = document.getElementById('brightness');
+    const saturationInput = document.getElementById('saturation');
+    const sizeInput = document.getElementById('size');
+    const contrastInput = document.getElementById('contrast');
+    const colorModeSelect = document.getElementById('colorMode');
+    const hueInput = document.getElementById('hue');
+    const hueGroup = document.getElementById('hueGroup');
+    const brightnessGroup = document.getElementById('brightnessGroup');
+    const saturationGroup = document.getElementById('saturationGroup');
+    const animationIntensityInput = document.getElementById('animationIntensity');
+    const animationSpeedInput = document.getElementById('animationSpeed');
+    const backgroundURLInput = document.getElementById('backgroundURL');
+    const toggleEditBtn = document.getElementById('toggleEdit');
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('hours').textContent = String(now.getHours()).padStart(2, '0');
+      document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2, '0');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function updateStyles() {
+      clock.style.transform = `scale(${sizeInput.value / 100})`;
+      const contrast = contrastInput.value;
+      const mode = colorModeSelect.value;
+
+      if (mode === 'negative') {
+        brightnessGroup.style.display = 'flex';
+        saturationGroup.style.display = 'none';
+        hueGroup.style.display = 'none';
+        clock.style.mixBlendMode = 'difference';
+        clock.style.color = 'white';
+        clock.classList.remove('gradient-text', 'animated-gradient');
+        clock.style.filter = `brightness(${brightnessInput.value}%) contrast(${contrast}%) saturate(100%)`;
+      } else if (mode === 'gradient') {
+        brightnessGroup.style.display = 'none';
+        saturationGroup.style.display = 'flex';
+        hueGroup.style.display = 'flex';
+        clock.classList.add('gradient-text');
+
+        // Intensité (0 → peu de variation, 100 → max)
+        const intensity = 1 - animationIntensityInput.value / 100; // inversé
+        clock.style.backgroundSize = `${400 * (1 - 0.5 * intensity)}% 400%`;
+
+        // Vitesse (0 → statique 25s, 100 → rapide 1s)
+        const speed = 25 - (animationSpeedInput.value / 100) * 24; 
+        clock.style.animationDuration = `${speed}s`;
+        clock.classList.add('animated-gradient');
+
+        clock.style.filter = `contrast(${contrast}%) saturate(${saturationInput.value}%) hue-rotate(${hueInput.value}deg)`;
+      }
+    }
+
+    brightnessInput.addEventListener('input', updateStyles);
+    saturationInput.addEventListener('input', updateStyles);
+    sizeInput.addEventListener('input', updateStyles);
+    contrastInput.addEventListener('input', updateStyles);
+    colorModeSelect.addEventListener('change', updateStyles);
+    hueInput.addEventListener('input', updateStyles);
+    animationIntensityInput.addEventListener('input', updateStyles);
+    animationSpeedInput.addEventListener('input', updateStyles);
+    backgroundURLInput.addEventListener('input', () => {
+      const url = backgroundURLInput.value.trim();
+      if (url) {
+        document.body.style.background = `url('${url}') center/cover no-repeat`;
+      }
+    });
+
+    toggleEditBtn.addEventListener('click', () => {
+      if (document.getElementById('controls').style.display === 'none') {
+        document.getElementById('controls').style.display = 'flex';
+        toggleEditBtn.textContent = 'Masquer édition';
+      } else {
+        document.getElementById('controls').style.display = 'none';
+        toggleEditBtn.textContent = 'Afficher édition';
+      }
+    });
+
+    updateStyles();
+  </script>
+</body>
+</html>
