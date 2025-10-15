@@ -38,7 +38,7 @@
       margin-bottom: 10px;
       z-index: 1;
     }
-    #monitoring div { font-size: 16px; font-weight: 700; }
+    #monitoring div { font-size: 20px; font-weight: 700; }
     #monitoring .temp { font-size: 48px; font-weight: 900; }
     #monitoring .container { display: flex; gap: 30px; justify-content: center; align-items: center; }
 
@@ -284,22 +284,30 @@ document.addEventListener('mousemove', e => {
 });
 
 // --- Monitoring NZXT ---
-function updateMonitoring(data){
-  const { cpus, gpus } = data;
-  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}°C` : "__";
-  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°C` : "__";
-
-  monitoringEl.style.display = 'block';
-  clock.style.display = 'none';
-
-  setTimeout(() => {
-    monitoringEl.style.display = 'none';
+let showClock = true;
+function toggleDisplayCycle() {
+  if (showClock) {
+    clock.style.display = 'none';
+    monitoringEl.style.display = 'block';
+  } else {
     clock.style.display = 'flex';
-  }, 10000);
+    monitoringEl.style.display = 'none';
+  }
+  showClock = !showClock;
+}
+
+// Cycle automatique 10s / 10s
+setInterval(toggleDisplayCycle, 10000);
+
+// Mise à jour des températures
+function updateMonitoringData(data){
+  const { cpus, gpus } = data;
+  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}` : "__";
+  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}` : "__";
 }
 
 // NZXT CAM
-window.nzxt = { v1: { onMonitoringDataUpdate: data => updateMonitoring(data) } };
+window.nzxt = { v1: { onMonitoringDataUpdate: data => updateMonitoringData(data) } };
 
 // Initialisation
 loadOptions();
