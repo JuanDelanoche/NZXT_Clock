@@ -283,14 +283,21 @@ document.addEventListener('mousemove', e => {
   updateStyles(); startX = e.clientX; startY = e.clientY;
 });
 
-// --- Monitoring NZXT ---
+// --- Monitoring NZXT corrigé ---
+let monitoringTimeout;
 function updateMonitoring(data){
-  const { cpus, gpus } = data;
-  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${cpus[0].temperature}°C` : "__";
-  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${gpus[0].temperature}°C` : "__";
+  const { cpus=[], gpus=[] } = data || {};
+  cpuTempEl.textContent = (cpus.length && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}°C` : "__";
+  gpuTempEl.textContent = (gpus.length && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°C` : "__";
 
-  monitoringEl.style.display = 'block'; clock.style.display = 'none';
-  setTimeout(() => { monitoringEl.style.display = 'none'; clock.style.display = 'flex'; }, 10000);
+  monitoringEl.style.display = 'block';
+  clock.style.display = 'none';
+
+  if(monitoringTimeout) clearTimeout(monitoringTimeout);
+  monitoringTimeout = setTimeout(()=>{
+    monitoringEl.style.display = 'none';
+    clock.style.display = 'flex';
+  }, 10000); // 10s stable
 }
 
 // NZXT CAM
