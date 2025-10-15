@@ -5,106 +5,62 @@
 <title>Horloge + Monitoring NZXT CAM</title>
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  user-select: none;
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none;
 }
+
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  position: relative;
+  display: flex; justify-content: center; align-items: center;
+  flex-direction: column; position: relative;
 }
+
 #background {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed; top:0; left:0; width:100%; height:100%;
   background: url('https://pbs.twimg.com/media/Gg8dWSDXkAEbKjI?format=jpg&name=4096x4096') center/cover no-repeat;
-  z-index: 0;
-  cursor: move;
-  transition: background 0.3s ease;
+  z-index:0; cursor: move; transition: background 0.3s ease;
 }
+
 #monitoring {
-  display: none;
-  text-align: center;
-  margin-bottom: 10px;
-  z-index: 1;
+  display:none; text-align:center; margin-bottom:10px; z-index:1;
 }
-#monitoring .container { display: flex; justify-content: center; align-items: center; }
-#monitoring .temp { font-size: 48px; font-weight: 900; margin: 0 20px; }
+#monitoring div { font-size:16px; font-weight:700; }
+#monitoring .temp { font-weight:900; }
+#monitoring .container { display:flex; justify-content:center; align-items:center; gap:30px; }
+
 #clock {
-  text-align: center;
-  font-weight: 900;
-  z-index: 1;
-  mix-blend-mode: difference;
-  color: white;
-  user-select: none;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  text-align:center; font-weight:900; z-index:1; opacity:1; mix-blend-mode:difference;
+  color:white; user-select:none; position:relative;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition: filter 0.3s ease, color 0.3s ease, background 0.3s ease;
 }
-#hours, #minutes { margin: 0; line-height: 1; }
+#hours, #minutes { margin:0; line-height:1; }
+
 #controls {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.6);
-  color: white;
-  padding: 1em;
-  border-radius: 10px;
-  display: none;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 0.9em;
-  z-index: 10;
-  width: 650px;
-  justify-content: center;
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background: rgba(0,0,0,0.6); color:white; padding:1em; border-radius:10px;
+  display:none; flex-wrap:wrap; gap:12px; font-size:0.9em; z-index:10; width:550px;
+  justify-content:center;
 }
 .slider-group, .select-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  flex: 1 1 150px;
+  display:flex; align-items:center; gap:0.5em; flex:1 1 150px;
 }
-.slider-group label, .select-group label { width: 90px; }
-.slider-group input[type="range"], .slider-group input[type="text"], .select-group select { flex: 1; }
+.slider-group label, .select-group label { width:90px; }
+.slider-group input[type="range"], .slider-group input[type="text"], .select-group select { flex:1; }
+
 .gradient-text {
   background: linear-gradient(120deg,#ff0040,#ff7b00,#fffb00,#00ff9d,#00c3ff,#7b00ff,#ff00c8);
-  background-size: 400% 400%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  mix-blend-mode: normal;
+  background-size:400% 400%; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  filter:brightness(1.2) contrast(1.2); mix-blend-mode: normal;
 }
 .animated-gradient { animation: gradientFlow linear infinite; }
-@keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+@keyframes gradientFlow { 0% {background-position:0% 50%;} 50% {background-position:100% 50%;} 100% {background-position:0% 50%;} }
+
 #toggleEdit {
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  background: rgba(0,0,0,0.7);
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9em;
-  z-index: 11;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  position:fixed; top:15px; right:15px; background:rgba(0,0,0,0.7); color:white;
+  border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:0.9em; z-index:11; opacity:0;
+  transition:opacity 0.3s ease;
 }
-#toggleEdit:hover { opacity: 1; }
+#toggleEdit:hover { opacity:1; }
 </style>
 </head>
 <body>
@@ -141,8 +97,6 @@ body {
   <div class="slider-group"><label for="hoursSize">Taille Heures</label><input type="range" id="hoursSize" min="20" max="400" value="140"></div>
   <div class="slider-group"><label for="minutesSize">Taille Minutes</label><input type="range" id="minutesSize" min="20" max="400" value="100"></div>
   <div class="slider-group"><label for="lineHeight">Espacement</label><input type="range" id="lineHeight" min="-0.5" max="2" step="0.01"></div>
-  <div class="slider-group"><label for="tempSize">Températures</label><input type="range" id="tempSize" min="20" max="150" value="48"></div>
-  <div class="slider-group"><label for="tempGap">Écart Temp</label><input type="range" id="tempGap" min="0" max="200" value="20"></div>
   <div class="select-group"><label for="colorMode">Couleur</label>
     <select id="colorMode">
       <option value="negative">Négatif</option>
@@ -156,6 +110,9 @@ body {
   <div class="slider-group"><label for="bgSize">Fond (%)</label><input type="range" id="bgSize" min="50" max="200" /></div>
   <div class="slider-group"><label for="bgX">X (%)</label><input type="range" id="bgX" min="0" max="100" /></div>
   <div class="slider-group"><label for="bgY">Y (%)</label><input type="range" id="bgY" min="0" max="100" /></div>
+  <!-- Nouveaux sliders -->
+  <div class="slider-group"><label for="tempSize">Taille Temp</label><input type="range" id="tempSize" min="20" max="120" value="48"></div>
+  <div class="slider-group"><label for="tempSpacing">Espacement Temp</label><input type="range" id="tempSpacing" min="10" max="100" value="30"></div>
 </div>
 
 <button id="toggleEdit">Afficher édition</button>
@@ -187,10 +144,11 @@ const inputs = {
   backgroundURL: document.getElementById('backgroundURL'),
   bgSize: document.getElementById('bgSize'),
   bgX: document.getElementById('bgX'),
-  bgY: document.getElementById('bgY'),
-  tempSize: document.getElementById('tempSize'),
-  tempGap: document.getElementById('tempGap')
+  bgY: document.getElementById('bgY')
 };
+
+const tempSizeInput = document.getElementById('tempSize');
+const tempSpacingInput = document.getElementById('tempSpacing');
 
 const groups = { brightnessGroup: document.getElementById('brightnessGroup'), saturationGroup: document.getElementById('saturationGroup'), hueGroup: document.getElementById('hueGroup') };
 
@@ -209,7 +167,10 @@ function loadOptions() {
     if(localStorage.getItem(key) !== null) inputs[key].value = localStorage.getItem(key);
     else if(key === "lineHeight") inputs[key].value = 0;
   });
+  if(localStorage.getItem('tempSize')) tempSizeInput.value = localStorage.getItem('tempSize');
+  if(localStorage.getItem('tempSpacing')) tempSpacingInput.value = localStorage.getItem('tempSpacing');
   updateStyles();
+  updateTempStyles();
 }
 function saveOptions() {
   Object.keys(inputs).forEach(key => localStorage.setItem(key, inputs[key].value));
@@ -220,11 +181,6 @@ function updateStyles() {
   hoursEl.style.fontWeight = inputs.hoursWeight.value;
   minutesEl.style.fontWeight = inputs.minutesWeight.value;
   hoursEl.style.marginBottom = inputs.lineHeight.value * -50 + "px";
-
-  cpuTempEl.style.fontSize = inputs.tempSize.value + "px";
-  gpuTempEl.style.fontSize = inputs.tempSize.value + "px";
-  cpuTempEl.style.margin = "0 " + inputs.tempGap.value/2 + "px";
-  gpuTempEl.style.margin = "0 " + inputs.tempGap.value/2 + "px";
 
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
@@ -237,13 +193,7 @@ function updateStyles() {
     clock.style.color = 'white';
     clock.classList.remove('gradient-text','animated-gradient');
     clock.style.filter = `brightness(${inputs.brightness.value}%) contrast(${contrast}%) saturate(100%)`;
-
-    cpuTempEl.style.color = clock.style.color;
-    gpuTempEl.style.color = clock.style.color;
-    cpuTempEl.style.filter = clock.style.filter;
-    gpuTempEl.style.filter = clock.style.filter;
-    cpuTempEl.classList.remove('gradient-text','animated-gradient');
-    gpuTempEl.classList.remove('gradient-text','animated-gradient');
+    monitoringEl.style.color = clock.style.color;
   } else {
     groups.brightnessGroup.style.display = 'none';
     groups.saturationGroup.style.display = 'flex';
@@ -256,27 +206,31 @@ function updateStyles() {
     clock.style.animationDuration = `${speed}s`;
     clock.classList.add('animated-gradient');
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
-
-    [cpuTempEl,gpuTempEl].forEach(el => {
-      el.classList.add('gradient-text','animated-gradient');
-      el.style.backgroundSize = clock.style.backgroundSize;
-      el.style.animationDuration = clock.style.animationDuration;
-      el.style.filter = clock.style.filter;
-    });
+    monitoringEl.style.background = clock.style.background;
   }
 
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
   saveOptions();
 }
+
+// --- Styles Températures ---
+function updateTempStyles() {
+  const size = tempSizeInput.value;
+  const spacing = tempSpacingInput.value;
+  cpuTempEl.style.fontSize = size + "px";
+  gpuTempEl.style.fontSize = size + "px";
+  monitoringEl.querySelector('.container').style.gap = spacing + "px";
+}
+
+// --- Events sliders ---
 Object.values(inputs).forEach(el => el.addEventListener('input', updateStyles));
+tempSizeInput.addEventListener('input', () => { updateTempStyles(); localStorage.setItem('tempSize', tempSizeInput.value); });
+tempSpacingInput.addEventListener('input', () => { updateTempStyles(); localStorage.setItem('tempSpacing', tempSpacingInput.value); });
 
 // Toggle édition
 toggleEditBtn.addEventListener('click', () => {
-  if(controls.style.display === 'none') {
-    controls.style.display = 'flex'; toggleEditBtn.textContent = 'Masquer édition';
-  } else {
-    controls.style.display = 'none'; toggleEditBtn.textContent = 'Afficher édition';
-  }
+  if(controls.style.display === 'none') { controls.style.display = 'flex'; toggleEditBtn.textContent = 'Masquer édition'; }
+  else { controls.style.display = 'none'; toggleEditBtn.textContent = 'Afficher édition'; }
 });
 
 // Glisser fond
@@ -295,24 +249,23 @@ document.addEventListener('mousemove', e => {
 // --- Monitoring NZXT ---
 function updateMonitoring(data){
   const { cpus, gpus } = data;
-  cpuTempEl.textContent = (cpus.length>0 && typeof cpus[0].temperature==="number") ? `${Math.round(cpus[0].temperature)}°` : "__";
-  gpuTempEl.textContent = (gpus.length>0 && typeof gpus[0].temperature==="number") ? `${Math.round(gpus[0].temperature)}°` : "__";
+  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}°` : "__";
+  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°` : "__";
 }
 
-// --- Cycle horloge / monitoring ---
-let showingClock = true;
-function cycleDisplay(){
-  if(showingClock){
-    monitoringEl.style.display = 'flex';
-    clock.style.display = 'none';
-  } else {
-    monitoringEl.style.display = 'none';
+// Cycle 10s horloge / 10s monitoring
+let showClock = true;
+function cycleDisplay() {
+  if(showClock) {
     clock.style.display = 'flex';
+    monitoringEl.style.display = 'none';
+  } else {
+    clock.style.display = 'none';
+    monitoringEl.style.display = 'flex';
   }
-  showingClock = !showingClock;
+  showClock = !showClock;
 }
 setInterval(cycleDisplay, 10000);
-cycleDisplay(); // démarre le cycle
 
 // NZXT CAM
 window.nzxt = { v1: { onMonitoringDataUpdate: data => updateMonitoring(data) } };
