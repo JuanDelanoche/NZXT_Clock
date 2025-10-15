@@ -39,7 +39,7 @@
       z-index: 1;
     }
     #monitoring div { font-size: 16px; font-weight: 700; }
-    #monitoring .temp { font-size: 32px; font-weight: 900; }
+    #monitoring .temp { font-size: 48px; font-weight: 900; }
     #monitoring .container { display: flex; gap: 30px; justify-content: center; align-items: center; }
 
     #clock {
@@ -283,21 +283,19 @@ document.addEventListener('mousemove', e => {
   updateStyles(); startX = e.clientX; startY = e.clientY;
 });
 
-// --- Monitoring NZXT corrigé ---
-let monitoringTimeout;
+// --- Monitoring NZXT ---
 function updateMonitoring(data){
-  const { cpus=[], gpus=[] } = data || {};
-  cpuTempEl.textContent = (cpus.length && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}°C` : "__";
-  gpuTempEl.textContent = (gpus.length && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°C` : "__";
+  const { cpus, gpus } = data;
+  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${Math.round(cpus[0].temperature)}°C` : "__";
+  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°C` : "__";
 
   monitoringEl.style.display = 'block';
   clock.style.display = 'none';
 
-  if(monitoringTimeout) clearTimeout(monitoringTimeout);
-  monitoringTimeout = setTimeout(()=>{
+  setTimeout(() => {
     monitoringEl.style.display = 'none';
     clock.style.display = 'flex';
-  }, 10000); // 10s stable
+  }, 10000);
 }
 
 // NZXT CAM
