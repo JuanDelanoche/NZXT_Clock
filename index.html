@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Horloge personnalisable</title>
+  <title>Horloge + Monitoring NZXT CAM</title>
   <style>
     html, body {
       margin: 0;
@@ -32,6 +32,16 @@
       transition: background 0.3s ease;
     }
 
+    #monitoring {
+      display: none;
+      text-align: center;
+      margin-bottom: 10px;
+      z-index: 1;
+    }
+    #monitoring div { font-size: 16px; font-weight: 700; }
+    #monitoring .temp { font-size: 32px; font-weight: 900; }
+    #monitoring .container { display: flex; gap: 30px; justify-content: center; align-items: center; }
+
     #clock {
       text-align: center;
       font-weight: 900;
@@ -47,11 +57,7 @@
       align-items: center;
       justify-content: center;
     }
-
-    #hours, #minutes {
-      margin: 0;
-      line-height: 1;
-    }
+    #hours, #minutes { margin: 0; line-height: 1; }
 
     #controls {
       position: fixed;
@@ -81,16 +87,13 @@
     .slider-group input[type="range"], .slider-group input[type="text"], .select-group select { flex: 1; }
 
     .gradient-text {
-      background: linear-gradient(120deg,
-        #ff0040,#ff7b00,#fffb00,#00ff9d,#00c3ff,#7b00ff,#ff00c8
-      );
+      background: linear-gradient(120deg,#ff0040,#ff7b00,#fffb00,#00ff9d,#00c3ff,#7b00ff,#ff00c8);
       background-size: 400% 400%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       filter: brightness(1.2) contrast(1.2);
       mix-blend-mode: normal;
     }
-
     .animated-gradient { animation: gradientFlow linear infinite; }
     @keyframes gradientFlow {
       0% { background-position: 0% 50%; }
@@ -98,7 +101,6 @@
       100% { background-position: 0% 50%; }
     }
 
-    /* Bouton édition invisible par défaut */
     #toggleEdit {
       position: fixed;
       top: 15px;
@@ -114,88 +116,56 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-    #toggleEdit:hover {
-      opacity: 1;
-    }
+    #toggleEdit:hover { opacity: 1; }
   </style>
 </head>
 <body>
 
 <div id="background"></div>
 
+<!-- Monitoring CPU/GPU -->
+<div id="monitoring">
+  <div class="container">
+    <div>
+      <div>CPU</div>
+      <div class="temp" id="cpuTemp">__</div>
+    </div>
+    <div>
+      <div>GPU</div>
+      <div class="temp" id="gpuTemp">__</div>
+    </div>
+  </div>
+</div>
+
+<!-- Horloge -->
 <div id="clock">
   <div id="hours">--</div>
   <div id="minutes">--</div>
 </div>
 
+<!-- Contrôles -->
 <div id="controls">
-  <div class="slider-group" id="brightnessGroup">
-    <label for="brightness">Luminosité</label>
-    <input type="range" id="brightness" min="10" max="150" />
-  </div>
-  <div class="slider-group" id="saturationGroup">
-    <label for="saturation">Saturation</label>
-    <input type="range" id="saturation" min="0" max="200" />
-  </div>
-  <div class="slider-group">
-    <label for="contrast">Contraste</label>
-    <input type="range" id="contrast" min="50" max="200" />
-  </div>
-  <div class="slider-group">
-    <label for="hoursWeight">Gras heures</label>
-    <input type="range" id="hoursWeight" min="100" max="900" step="10" />
-  </div>
-  <div class="slider-group">
-    <label for="minutesWeight">Gras minutes</label>
-    <input type="range" id="minutesWeight" min="100" max="900" step="10" />
-  </div>
-  <div class="slider-group">
-    <label for="hoursSize">Taille Heures</label>
-    <input type="range" id="hoursSize" min="20" max="400" value="140">
-  </div>
-  <div class="slider-group">
-    <label for="minutesSize">Taille Minutes</label>
-    <input type="range" id="minutesSize" min="20" max="400" value="100">
-  </div>
-  <div class="slider-group">
-    <label for="lineHeight">Espacement</label>
-    <input type="range" id="lineHeight" min="-0.5" max="2" step="0.01">
-  </div>
-  <div class="select-group">
-    <label for="colorMode">Couleur</label>
+  <div class="slider-group" id="brightnessGroup"><label for="brightness">Luminosité</label><input type="range" id="brightness" min="10" max="150" /></div>
+  <div class="slider-group" id="saturationGroup"><label for="saturation">Saturation</label><input type="range" id="saturation" min="0" max="200" /></div>
+  <div class="slider-group"><label for="contrast">Contraste</label><input type="range" id="contrast" min="50" max="200" /></div>
+  <div class="slider-group"><label for="hoursWeight">Gras heures</label><input type="range" id="hoursWeight" min="100" max="900" step="10" /></div>
+  <div class="slider-group"><label for="minutesWeight">Gras minutes</label><input type="range" id="minutesWeight" min="100" max="900" step="10" /></div>
+  <div class="slider-group"><label for="hoursSize">Taille Heures</label><input type="range" id="hoursSize" min="20" max="400" value="140"></div>
+  <div class="slider-group"><label for="minutesSize">Taille Minutes</label><input type="range" id="minutesSize" min="20" max="400" value="100"></div>
+  <div class="slider-group"><label for="lineHeight">Espacement</label><input type="range" id="lineHeight" min="-0.5" max="2" step="0.01"></div>
+  <div class="select-group"><label for="colorMode">Couleur</label>
     <select id="colorMode">
       <option value="negative">Négatif</option>
       <option value="gradient">Gradient</option>
     </select>
   </div>
-  <div class="slider-group" id="hueGroup">
-    <label for="hue">Teinte</label>
-    <input type="range" id="hue" min="0" max="360" />
-  </div>
-  <div class="slider-group">
-    <label for="animationIntensity">Intensité</label>
-    <input type="range" id="animationIntensity" min="0" max="100" />
-  </div>
-  <div class="slider-group">
-    <label for="animationSpeed">Vitesse</label>
-    <input type="range" id="animationSpeed" min="0" max="100" />
-  </div>
-  <div class="slider-group">
-    <label for="backgroundURL">Fond</label>
-    <input type="text" id="backgroundURL" placeholder="Coller le lien de l'image ici" />
-  </div>
-  <div class="slider-group">
-    <label for="bgSize">Fond (%)</label>
-    <input type="range" id="bgSize" min="50" max="200" />
-  </div>
-  <div class="slider-group">
-    <label for="bgX">X (%)</label>
-    <input type="range" id="bgX" min="0" max="100" />
-  </div>
-  <div class="slider-group">
-    <label for="bgY">Y (%)</label>
-    <input type="range" id="bgY" min="0" max="100" />
-  </div>
+  <div class="slider-group" id="hueGroup"><label for="hue">Teinte</label><input type="range" id="hue" min="0" max="360" /></div>
+  <div class="slider-group"><label for="animationIntensity">Intensité</label><input type="range" id="animationIntensity" min="0" max="100" /></div>
+  <div class="slider-group"><label for="animationSpeed">Vitesse</label><input type="range" id="animationSpeed" min="0" max="100" /></div>
+  <div class="slider-group"><label for="backgroundURL">Fond</label><input type="text" id="backgroundURL" placeholder="Coller le lien de l'image ici" /></div>
+  <div class="slider-group"><label for="bgSize">Fond (%)</label><input type="range" id="bgSize" min="50" max="200" /></div>
+  <div class="slider-group"><label for="bgX">X (%)</label><input type="range" id="bgX" min="0" max="100" /></div>
+  <div class="slider-group"><label for="bgY">Y (%)</label><input type="range" id="bgY" min="0" max="100" /></div>
 </div>
 
 <button id="toggleEdit">Afficher édition</button>
@@ -203,10 +173,11 @@
 <script>
 const clock = document.getElementById('clock');
 const background = document.getElementById('background');
-
 const hoursEl = document.getElementById('hours');
 const minutesEl = document.getElementById('minutes');
-
+const monitoringEl = document.getElementById('monitoring');
+const cpuTempEl = document.getElementById('cpuTemp');
+const gpuTempEl = document.getElementById('gpuTemp');
 const controls = document.getElementById('controls');
 const toggleEditBtn = document.getElementById('toggleEdit');
 
@@ -229,13 +200,9 @@ const inputs = {
   bgY: document.getElementById('bgY')
 };
 
-const groups = {
-  brightnessGroup: document.getElementById('brightnessGroup'),
-  saturationGroup: document.getElementById('saturationGroup'),
-  hueGroup: document.getElementById('hueGroup')
-};
+const groups = { brightnessGroup: document.getElementById('brightnessGroup'), saturationGroup: document.getElementById('saturationGroup'), hueGroup: document.getElementById('hueGroup') };
 
-// Horloge
+// --- Horloge ---
 function updateClock() {
   const now = new Date();
   hoursEl.textContent = String(now.getHours()).padStart(2,'0');
@@ -244,35 +211,23 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Charger les options sauvegardées
+// --- Styles & Options ---
 function loadOptions() {
   Object.keys(inputs).forEach(key => {
-    if(localStorage.getItem(key) !== null) {
-      inputs[key].value = localStorage.getItem(key);
-    } else if(key === "lineHeight") {
-      inputs[key].value = 0; // espacement par défaut
-    }
+    if(localStorage.getItem(key) !== null) inputs[key].value = localStorage.getItem(key);
+    else if(key === "lineHeight") inputs[key].value = 0;
   });
   updateStyles();
 }
-
-// Sauvegarder options
 function saveOptions() {
-  Object.keys(inputs).forEach(key => {
-    localStorage.setItem(key, inputs[key].value);
-  });
+  Object.keys(inputs).forEach(key => localStorage.setItem(key, inputs[key].value));
 }
-
-// Appliquer styles
 function updateStyles() {
   hoursEl.style.fontSize = inputs.hoursSize.value + "px";
   minutesEl.style.fontSize = inputs.minutesSize.value + "px";
-
   hoursEl.style.fontWeight = inputs.hoursWeight.value;
   minutesEl.style.fontWeight = inputs.minutesWeight.value;
-
-  // Espacement
-  hoursEl.style.marginBottom = inputs.lineHeight.value * -50 + "px"; // ajustable pour plus proche/plus loin
+  hoursEl.style.marginBottom = inputs.lineHeight.value * -50 + "px";
 
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
@@ -285,60 +240,61 @@ function updateStyles() {
     clock.style.color = 'white';
     clock.classList.remove('gradient-text','animated-gradient');
     clock.style.filter = `brightness(${inputs.brightness.value}%) contrast(${contrast}%) saturate(100%)`;
+    monitoringEl.style.color = clock.style.color;
   } else {
     groups.brightnessGroup.style.display = 'none';
     groups.saturationGroup.style.display = 'flex';
     groups.hueGroup.style.display = 'flex';
     clock.classList.add('gradient-text');
     const intensity = inputs.animationIntensity.value / 100;
-    const minSize = 400;
-    const maxSize = 600;
+    const minSize = 400, maxSize = 600;
     clock.style.backgroundSize = `${minSize + intensity*(maxSize-minSize)}% 400%`;
     const speed = 25 - (inputs.animationSpeed.value/100)*24;
     clock.style.animationDuration = `${speed}s`;
     clock.classList.add('animated-gradient');
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
+    monitoringEl.style.background = clock.style.background;
   }
 
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
-
   saveOptions();
 }
-
-// Inputs
 Object.values(inputs).forEach(el => el.addEventListener('input', updateStyles));
 
 // Toggle édition
 toggleEditBtn.addEventListener('click', () => {
   if(controls.style.display === 'none') {
-    controls.style.display = 'flex';
-    toggleEditBtn.textContent = 'Masquer édition';
+    controls.style.display = 'flex'; toggleEditBtn.textContent = 'Masquer édition';
   } else {
-    controls.style.display = 'none';
-    toggleEditBtn.textContent = 'Afficher édition';
+    controls.style.display = 'none'; toggleEditBtn.textContent = 'Afficher édition';
   }
 });
 
 // Glisser fond
 let isDragging = false, startX, startY;
-background.addEventListener('mousedown', e => {
-  isDragging = true;
-  startX = e.clientX;
-  startY = e.clientY;
-});
+background.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX; startY = e.clientY; });
 document.addEventListener('mouseup', () => { isDragging = false; });
 document.addEventListener('mousemove', e => {
   if(!isDragging) return;
-  const dx = e.clientX - startX;
-  const dy = e.clientY - startY;
+  const dx = e.clientX - startX, dy = e.clientY - startY;
   let x = Math.min(100, Math.max(0, parseFloat(inputs.bgX.value) + dx / window.innerWidth * 100));
   let y = Math.min(100, Math.max(0, parseFloat(inputs.bgY.value) + dy / window.innerHeight * 100));
-  inputs.bgX.value = x;
-  inputs.bgY.value = y;
-  updateStyles();
-  startX = e.clientX;
-  startY = e.clientY;
+  inputs.bgX.value = x; inputs.bgY.value = y;
+  updateStyles(); startX = e.clientX; startY = e.clientY;
 });
+
+// --- Monitoring NZXT ---
+function updateMonitoring(data){
+  const { cpus, gpus } = data;
+  cpuTempEl.textContent = (cpus.length > 0 && typeof cpus[0].temperature === "number") ? `${cpus[0].temperature}°C` : "__";
+  gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${gpus[0].temperature}°C` : "__";
+
+  monitoringEl.style.display = 'block'; clock.style.display = 'none';
+  setTimeout(() => { monitoringEl.style.display = 'none'; clock.style.display = 'flex'; }, 10000);
+}
+
+// NZXT CAM
+window.nzxt = { v1: { onMonitoringDataUpdate: data => updateMonitoring(data) } };
 
 // Initialisation
 loadOptions();
