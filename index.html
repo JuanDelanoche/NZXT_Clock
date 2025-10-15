@@ -23,9 +23,9 @@ body {
 #monitoring {
   display:none; text-align:center; margin-bottom:10px; z-index:1;
 }
-#monitoring div { font-size:16px; font-weight:700; }
-#monitoring .temp { font-weight:900; }
 #monitoring .container { display:flex; justify-content:center; align-items:center; gap:30px; }
+#monitoring div { text-align:center; }
+#monitoring .temp { font-weight:900; }
 
 #clock {
   text-align:center; font-weight:900; z-index:1; opacity:1; mix-blend-mode:difference;
@@ -175,6 +175,8 @@ function loadOptions() {
 function saveOptions() {
   Object.keys(inputs).forEach(key => localStorage.setItem(key, inputs[key].value));
 }
+
+// --- Styles horloge ---
 function updateStyles() {
   hoursEl.style.fontSize = inputs.hoursSize.value + "px";
   minutesEl.style.fontSize = inputs.minutesSize.value + "px";
@@ -194,6 +196,8 @@ function updateStyles() {
     clock.classList.remove('gradient-text','animated-gradient');
     clock.style.filter = `brightness(${inputs.brightness.value}%) contrast(${contrast}%) saturate(100%)`;
     monitoringEl.style.color = clock.style.color;
+    cpuTempEl.style.color = clock.style.color;
+    gpuTempEl.style.color = clock.style.color;
   } else {
     groups.brightnessGroup.style.display = 'none';
     groups.saturationGroup.style.display = 'flex';
@@ -206,7 +210,13 @@ function updateStyles() {
     clock.style.animationDuration = `${speed}s`;
     clock.classList.add('animated-gradient');
     clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
-    monitoringEl.style.background = clock.style.background;
+    // Pour que les températures reprennent la couleur de l'horloge
+    cpuTempEl.style.background = clock.style.background;
+    gpuTempEl.style.background = clock.style.background;
+    cpuTempEl.style.webkitBackgroundClip = 'text';
+    cpuTempEl.style.webkitTextFillColor = 'transparent';
+    gpuTempEl.style.webkitBackgroundClip = 'text';
+    gpuTempEl.style.webkitTextFillColor = 'transparent';
   }
 
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
