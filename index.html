@@ -2,24 +2,32 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kraken Z63 Custom Dashboard</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  height: 100%; overflow: hidden;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  user-select: none;
-  background: #000;
-  transform: translateZ(0);
-  image-rendering: pixelated;
-  -webkit-font-smoothing: antialiased;
+  height: 100vh; width: 100vw; overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none; background: #000;
+  transform: translateZ(0); image-rendering: pixelated;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --hours-size: 140px; --minutes-size: 100px; --hours-weight: 900; --minutes-weight: 700;
+  --hours-spacing: 0px; --temp-size: 80px; --label-size: 18px; --temp-weight: 900;
+  --label-weight: 600; --temp-spacing: 80px; --temp-gap: 8px; --label-opacity: 0.8;
+  --glow-intensity: 10px; --brightness: 1.2; --contrast: 1.3; --saturation: 1.2;
+  --primary-color: #ff6b6b; --secondary-color: #4ecdc4; --accent-color: #45b7d1;
+  --gradient-angle: 45deg; --gradient-speed: 4s; --gradient-size: 300%; --gradient-brightness: 1.2;
 }
 
 #bg-layer {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background-size: cover; background-position: center;
   transition: filter 0.3s ease, background-position 0.2s ease;
-  cursor: grab;
+  cursor: grab; z-index: 1;
 }
 #bg-layer:active { cursor: grabbing; }
 
@@ -29,78 +37,67 @@ html, body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
+  pointer-events: none; z-index: 2;
 }
-.content-layer.active { opacity: 1; z-index: 2; pointer-events: auto; }
+.content-layer.active { opacity: 1; pointer-events: auto; }
 
 #clock-content {
   text-align: center; color: #fff;
-  gap: var(--hours-spacing, 0px);
+  gap: var(--hours-spacing, 0px) !important;
 }
 #hours { 
-  font-size: var(--hours-size, 140px); 
-  font-weight: var(--hours-weight, 900); 
+  font-size: var(--hours-size, 140px) !important;
+  font-weight: var(--hours-weight, 900) !important;
+  line-height: 1 !important;
 }
 #minutes { 
-  font-size: var(--minutes-size, 100px); 
-  font-weight: var(--minutes-weight, 700); 
-  margin-top: var(--hours-spacing, 0px);
+  font-size: var(--minutes-size, 100px) !important;
+  font-weight: var(--minutes-weight, 700) !important;
+  margin-top: var(--hours-spacing, 0px) !important;
+  line-height: 1 !important;
 }
 
 #monitoring-content {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: center;
-  align-items: center;
-  gap: var(--temp-spacing, 80px);
-  text-align: center; color: #fff;
-  width: 100%;
+  display: flex !important; flex-direction: row !important;
+  justify-content: center; align-items: center;
+  gap: var(--temp-spacing, 80px) !important;
+  text-align: center; color: #fff; width: 100%;
 }
 .temp-item { 
-  display: flex !important;
-  flex-direction: column;
-  align-items: center; 
-  gap: var(--temp-gap, 8px);
+  display: flex !important; flex-direction: column;
+  align-items: center; gap: var(--temp-gap, 8px) !important;
   flex: 1;
 }
 .temp-label { 
-  font-size: var(--label-size, 18px); 
-  font-weight: var(--label-weight, 600); 
-  opacity: var(--label-opacity, 0.8);
+  font-size: var(--label-size, 18px) !important;
+  font-weight: var(--label-weight, 600) !important;
+  opacity: var(--label-opacity, 0.8) !important;
 }
 .temp-value { 
-  font-size: var(--temp-size, 80px); 
-  font-weight: var(--temp-weight, 900);
-  text-shadow: 0 0 var(--glow-intensity, 10px) currentColor;
+  font-size: var(--temp-size, 80px) !important;
+  font-weight: var(--temp-weight, 900) !important;
+  text-shadow: 0 0 var(--glow-intensity, 10px) currentColor !important;
+  line-height: 1 !important;
 }
 
-/* NÉGATIF AVANCÉ */
-body.negative .content-layer,
-body.gradient .content-layer {
-  mix-blend-mode: difference;
-  filter: 
-    brightness(var(--brightness, 1.2)) 
-    contrast(var(--contrast, 1.3))
-    saturate(var(--saturation, 1.2));
+body.negative .content-layer, body.gradient .content-layer {
+  mix-blend-mode: difference !important;
+  filter: brightness(var(--brightness, 1.2)) !important
+         contrast(var(--contrast, 1.3)) !important
+         saturate(var(--saturation, 1.2)) !important;
 }
 
-/* GRADIENT SIMPLIFIÉ MAIS SYMPA */
-body.gradient #hours,
-body.gradient #minutes,
-body.gradient .temp-value,
-body.gradient .temp-label {
+body.gradient #hours, body.gradient #minutes,
+body.gradient .temp-value, body.gradient .temp-label {
   background: linear-gradient(var(--gradient-angle, 45deg), 
-    var(--primary-color, #ff6b6b), 
-    var(--secondary-color, #4ecdc4), 
-    var(--accent-color, #45b7d1),
-    var(--primary-color, #ff6b6b)
-  );
-  background-size: var(--gradient-size, 300%) 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradient-flow var(--gradient-speed, 4s) linear infinite;
-  filter: brightness(var(--gradient-brightness, 1.2));
+    var(--primary-color, #ff6b6b), var(--secondary-color, #4ecdc4), 
+    var(--accent-color, #45b7d1), var(--primary-color, #ff6b6b)) !important;
+  background-size: var(--gradient-size, 300%) 100% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  animation: gradient-flow var(--gradient-speed, 4s) linear infinite !important;
+  filter: brightness(var(--gradient-brightness, 1.2)) !important;
 }
 
 @keyframes gradient-flow {
@@ -108,7 +105,6 @@ body.gradient .temp-label {
   100% { background-position: 300% 50%; }
 }
 
-/* Contrôles */
 #controls {
   position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
   background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
@@ -117,27 +113,21 @@ body.gradient .temp-label {
   z-index: 10; font-size: 12px; max-height: 80vh; overflow-y: auto;
   border: 1px solid rgba(255,255,255,0.1);
 }
-.control-group { 
-  display: flex; flex-direction: column; gap: 3px; min-width: 120px;
-}
-.control-group label { 
-  font-weight: 600; opacity: 0.9; font-size: 11px;
-}
+.control-group { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+.control-group label { font-weight: 600; opacity: 0.9; font-size: 11px; }
 .control-group input, .control-group select { 
-  background: rgba(255,255,255,0.1); border: none; 
-  border-radius: 5px; padding: 3px; color: white; font-size: 11px;
+  background: rgba(255,255,255,0.1); border: none; border-radius: 5px; 
+  padding: 3px; color: white; font-size: 11px;
 }
 input[type="range"] { height: 4px; }
 input[type="range"]::-webkit-slider-thumb {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4); 
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid white;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4); width: 16px; height: 16px; 
+  border-radius: 50%; border: 2px solid white;
 }
 input[type="color"] { width: 35px; height: 25px; padding: 0; }
 .file-upload {
   background: rgba(255,255,255,0.1); border: 2px dashed rgba(255,255,255,0.3);
-  padding: 6px; border-radius: 5px; text-align: center; cursor: pointer;
-  font-size: 10px;
+  padding: 6px; border-radius: 5px; text-align: center; cursor: pointer; font-size: 10px;
 }
 .file-upload:hover { border-color: #4ecdc4; background: rgba(78,205,196,0.1); }
 
@@ -149,12 +139,9 @@ input[type="color"] { width: 35px; height: 25px; padding: 0; }
 }
 #toggle-panel:hover { opacity: 1; transform: scale(1.05); }
 
-@media (max-height: 480px) {
-  #hours { font-size: 100px !important; }
-  #minutes { font-size: 70px !important; }
-  .temp-value { font-size: 60px !important; }
-  .temp-label { font-size: 14px !important; }
-  #monitoring-content { gap: 40px !important; }
+@media screen and (max-width: 800px) and (max-height: 480px) {
+  :root { --hours-size: 100px !important; --minutes-size: 70px !important; --temp-size: 60px !important; --label-size: 14px !important; }
+  #controls { bottom: 5px; padding: 10px; font-size: 10px; transform: translateX(-50%) scale(0.85); }
 }
 </style>
 </head>
@@ -184,11 +171,11 @@ input[type="color"] { width: 35px; height: 25px; padding: 0; }
   <!-- HORLOGE ULTRA DÉTAILLÉE -->
   <div class="control-group">
     <label>Taille Heures</label>
-    <input type="range" id="hours-size" min="50" max="400" value="140">
+    <input type="range" id="hours-size" min="30" max="300" value="140">
   </div>
   <div class="control-group">
     <label>Taille Minutes</label>
-    <input type="range" id="minutes-size" min="30" max="300" value="100">
+    <input type="range" id="minutes-size" min="20" max="200" value="100">
   </div>
   <div class="control-group">
     <label>Gras Heures</label>
@@ -206,11 +193,11 @@ input[type="color"] { width: 35px; height: 25px; padding: 0; }
   <!-- MONITORING ULTRA DÉTAILLÉ -->
   <div class="control-group">
     <label>Taille Températures</label>
-    <input type="range" id="temp-size" min="30" max="200" value="80">
+    <input type="range" id="temp-size" min="20" max="150" value="80">
   </div>
   <div class="control-group">
     <label>Taille Labels</label>
-    <input type="range" id="label-size" min="12" max="50" value="18">
+    <input type="range" id="label-size" min="8" max="40" value="18">
   </div>
   <div class="control-group">
     <label>Gras Températures</label>
@@ -338,7 +325,7 @@ const controls = {
   'contrast': document.getElementById('contrast'),
   'saturation': document.getElementById('saturation'),
   
-  // Gradient simplifié
+  // Gradient
   'color-mode': document.getElementById('color-mode'),
   'primary-color': document.getElementById('primary-color'),
   'secondary-color': document.getElementById('secondary-color'),
@@ -360,29 +347,24 @@ const fileUpload = document.getElementById('file-upload');
 // Horloge
 function updateClock() {
   const now = new Date();
-  document.getElementById('hours').textContent = 
-    now.getHours().toString().padStart(2, '0');
-  document.getElementById('minutes').textContent = 
-    now.getMinutes().toString().padStart(2, '0');
+  document.getElementById('hours').textContent = now.getHours().toString().padStart(2, '0');
+  document.getElementById('minutes').textContent = now.getMinutes().toString().padStart(2, '0');
 }
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(updateClock, 1000); updateClock();
 
 // Cycle 10s
 let showClock = true;
 function cycleContent() {
   if (showClock) {
-    clockContent.classList.add('active');
-    monitoringContent.classList.remove('active');
+    clockContent.classList.add('active'); monitoringContent.classList.remove('active');
   } else {
-    monitoringContent.classList.add('active');
-    clockContent.classList.remove('active');
+    monitoringContent.classList.add('active'); clockContent.classList.remove('active');
   }
   showClock = !showClock;
 }
 setInterval(cycleContent, 10000);
 
-// Monitoring
+// Monitoring NZXT + Simulation
 function updateMonitoring(data) {
   try {
     const { cpus = [], gpus = [] } = data || {};
@@ -395,17 +377,13 @@ function updateMonitoring(data) {
 
 function simulateData() {
   if (!window.nzxt?.v1) {
-    document.getElementById('cpu-temp').textContent = 
-      `${Math.round(40 + Math.random() * 40)}°`;
-    document.getElementById('gpu-temp').textContent = 
-      `${Math.round(45 + Math.random() * 50)}°`;
+    document.getElementById('cpu-temp').textContent = `${Math.round(40 + Math.random() * 40)}°`;
+    document.getElementById('gpu-temp').textContent = `${Math.round(45 + Math.random() * 50)}°`;
   }
 }
 setInterval(simulateData, 3000);
 
-window.nzxt = {
-  v1: { onMonitoringDataUpdate: updateMonitoring, onError: e => console.warn('NZXT error:', e) }
-};
+window.nzxt = { v1: { onMonitoringDataUpdate: updateMonitoring, onError: e => console.warn('NZXT error:', e) } };
 
 // Upload fichier
 function loadImageFile(file) {
@@ -419,36 +397,30 @@ function loadImageFile(file) {
 }
 
 fileUpload.addEventListener('click', () => fileInput.click());
-fileUpload.addEventListener('dragover', e => {
-  e.preventDefault(); fileUpload.style.borderColor = '#4ecdc4';
-});
+fileUpload.addEventListener('dragover', e => { e.preventDefault(); fileUpload.style.borderColor = '#4ecdc4'; });
 fileUpload.addEventListener('dragleave', () => fileUpload.style.borderColor = 'rgba(255,255,255,0.3)');
 fileUpload.addEventListener('drop', e => {
   e.preventDefault(); fileUpload.style.borderColor = 'rgba(255,255,255,0.3)';
   if (e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
 });
-fileInput.addEventListener('change', e => {
-  if (e.target.files[0]) loadImageFile(e.target.files[0]);
-});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImageFile(e.target.files[0]); });
 
-// Update styles
+// Update styles avec FIX KRAKEN
 function updateStyles() {
-  // Horloge ultra détaillée
-  document.documentElement.style.setProperty('--hours-size', `${controls['hours-size'].value}px`);
-  document.documentElement.style.setProperty('--minutes-size', `${controls['minutes-size'].value}px`);
-  document.documentElement.style.setProperty('--hours-weight', controls['hours-weight'].value);
-  document.documentElement.style.setProperty('--minutes-weight', controls['minutes-weight'].value);
-  document.documentElement.style.setProperty('--hours-spacing', `${controls['hours-spacing'].value}px`);
-  
-  // Monitoring ultra détaillé
-  document.documentElement.style.setProperty('--temp-size', `${controls['temp-size'].value}px`);
-  document.documentElement.style.setProperty('--label-size', `${controls['label-size'].value}px`);
-  document.documentElement.style.setProperty('--temp-weight', controls['temp-weight'].value);
-  document.documentElement.style.setProperty('--label-weight', controls['temp-weight'].value);
-  document.documentElement.style.setProperty('--temp-spacing', `${controls['temp-spacing'].value}px`);
-  document.documentElement.style.setProperty('--temp-gap', `${controls['temp-gap'].value}px`);
-  document.documentElement.style.setProperty('--label-opacity', controls['label-opacity'].value);
-  document.documentElement.style.setProperty('--glow-intensity', `${controls['glow-intensity'].value}px`);
+  // Force toutes les variables CSS
+  Object.keys(controls).forEach(key => {
+    const el = controls[key];
+    const value = el.value;
+    if (key.includes('size') || key.includes('spacing') || key.includes('gap') || key.includes('intensity')) {
+      document.documentElement.style.setProperty(`--${key}`, `${value}px`);
+    } else if (key.includes('weight') || key.includes('opacity')) {
+      document.documentElement.style.setProperty(`--${key}`, value);
+    } else if (key.includes('color') || key === 'color-mode') {
+      document.documentElement.style.setProperty(`--${key}`, value);
+    } else {
+      document.documentElement.style.setProperty(`--${key}`, value);
+    }
+  });
   
   // Background
   const url = controls['bg-url'].value.trim();
@@ -461,25 +433,12 @@ function updateStyles() {
   bgLayer.style.backgroundPosition = `${controls['bg-x'].value}% ${controls['bg-y'].value}%`;
   bgLayer.style.backgroundSize = `${controls['bg-size'].value}% auto`;
   
-  // Effets négatif
-  document.documentElement.style.setProperty('--brightness', controls['brightness'].value);
-  document.documentElement.style.setProperty('--contrast', controls['contrast'].value);
-  document.documentElement.style.setProperty('--saturation', controls['saturation'].value);
-  
   // Mode
   const mode = controls['color-mode'].value;
   document.body.className = mode;
   
-  // Gradient simplifié
-  if (mode === 'gradient') {
-    document.documentElement.style.setProperty('--primary-color', controls['primary-color'].value);
-    document.documentElement.style.setProperty('--secondary-color', controls['secondary-color'].value);
-    document.documentElement.style.setProperty('--accent-color', controls['accent-color'].value);
-    document.documentElement.style.setProperty('--gradient-angle', `${controls['gradient-angle'].value}deg`);
-    document.documentElement.style.setProperty('--gradient-speed', `${controls['gradient-speed'].value}s`);
-    document.documentElement.style.setProperty('--gradient-size', `${controls['gradient-size'].value}%`);
-    document.documentElement.style.setProperty('--gradient-brightness', controls['gradient-brightness'].value);
-  }
+  // Force repaint Kraken
+  document.documentElement.style.setProperty('--kraken-update', Date.now());
   
   // Sauvegarde
   Object.keys(controls).forEach(key => localStorage.setItem(key, controls[key].value));
@@ -503,9 +462,20 @@ document.addEventListener('mouseup', () => {
   isDragging = false; bgLayer.style.transition = 'filter 0.3s ease, background-position 0.2s ease';
 });
 
-// Événements
+// Événements avec force repaint
 Object.values(controls).forEach(control => {
-  ['input', 'change'].forEach(event => control.addEventListener(event, updateStyles));
+  ['input', 'change'].forEach(event => {
+    control.addEventListener(event, () => {
+      updateStyles();
+      // Force repaint Kraken
+      requestAnimationFrame(() => {
+        [clockContent, monitoringContent].forEach(el => {
+          el.style.transform = `translateZ(0.01px)`;
+          setTimeout(() => el.style.transform = '', 50);
+        });
+      });
+    });
+  });
 });
 
 togglePanel.addEventListener('click', () => {
