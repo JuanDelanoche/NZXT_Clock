@@ -20,17 +20,20 @@ body {
   z-index:0; cursor: move; transition: background 0.3s ease;
 }
 
+/* Monitoring */
 #monitoring {
   display:none; text-align:center; margin-bottom:10px; z-index:1;
+  position:relative; mix-blend-mode:difference;
 }
 #monitoring div { font-size:16px; font-weight:700; }
 #monitoring .temp { font-weight:900; }
 #monitoring .container { display:flex; justify-content:center; align-items:center; gap:30px; }
 
+/* Horloge */
 #clock {
-  text-align:center; font-weight:900; z-index:1; opacity:1; mix-blend-mode:difference;
-  color:white; user-select:none; position:relative;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; font-weight:900; z-index:1; opacity:1;
+  mix-blend-mode:difference; color:white; user-select:none;
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
   transition: filter 0.3s ease, color 0.3s ease, background 0.3s ease;
 }
 #hours, #minutes { margin:0; line-height:1; }
@@ -49,15 +52,22 @@ body {
 
 .gradient-text {
   background: linear-gradient(120deg,#ff0040,#ff7b00,#fffb00,#00ff9d,#00c3ff,#7b00ff,#ff00c8);
-  background-size:400% 400%; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  filter:brightness(1.2) contrast(1.2); mix-blend-mode: normal;
+  background-size:400% 400%;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  filter:brightness(1.2) contrast(1.2);
 }
 .animated-gradient { animation: gradientFlow linear infinite; }
-@keyframes gradientFlow { 0% {background-position:0% 50%;} 50% {background-position:100% 50%;} 100% {background-position:0% 50%;} }
+@keyframes gradientFlow {
+  0% {background-position:0% 50%;}
+  50% {background-position:100% 50%;}
+  100% {background-position:0% 50%;}
+}
 
 #toggleEdit {
-  position:fixed; top:15px; right:15px; background:rgba(0,0,0,0.7); color:white;
-  border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:0.9em; z-index:11; opacity:0;
+  position:fixed; top:15px; right:15px;
+  background:rgba(0,0,0,0.7); color:white;
+  border:none; padding:8px 14px; border-radius:8px;
+  cursor:pointer; font-size:0.9em; z-index:11; opacity:0;
   transition:opacity 0.3s ease;
 }
 #toggleEdit:hover { opacity:1; }
@@ -150,7 +160,11 @@ const inputs = {
 const tempSizeInput = document.getElementById('tempSize');
 const tempSpacingInput = document.getElementById('tempSpacing');
 
-const groups = { brightnessGroup: document.getElementById('brightnessGroup'), saturationGroup: document.getElementById('saturationGroup'), hueGroup: document.getElementById('hueGroup') };
+const groups = {
+  brightnessGroup: document.getElementById('brightnessGroup'),
+  saturationGroup: document.getElementById('saturationGroup'),
+  hueGroup: document.getElementById('hueGroup')
+};
 
 // --- Horloge ---
 function updateClock() {
@@ -175,6 +189,7 @@ function loadOptions() {
 function saveOptions() {
   Object.keys(inputs).forEach(key => localStorage.setItem(key, inputs[key].value));
 }
+
 function updateStyles() {
   hoursEl.style.fontSize = inputs.hoursSize.value + "px";
   minutesEl.style.fontSize = inputs.minutesSize.value + "px";
@@ -185,28 +200,32 @@ function updateStyles() {
   const contrast = inputs.contrast.value;
   const mode = inputs.colorMode.value;
 
+  // --- Mode négatif ---
   if(mode === 'negative') {
     groups.brightnessGroup.style.display = 'flex';
     groups.saturationGroup.style.display = 'none';
     groups.hueGroup.style.display = 'none';
-    clock.style.mixBlendMode = 'difference';
-    clock.style.color = 'white';
-    clock.classList.remove('gradient-text','animated-gradient');
-    clock.style.filter = `brightness(${inputs.brightness.value}%) contrast(${contrast}%) saturate(100%)`;
-    monitoringEl.style.color = clock.style.color;
+    [clock, monitoringEl].forEach(el => {
+      el.classList.remove('gradient-text','animated-gradient');
+      el.style.mixBlendMode = 'difference';
+      el.style.color = 'white';
+      el.style.filter = `brightness(${inputs.brightness.value}%) contrast(${contrast}%)`;
+    });
   } else {
+    // --- Mode gradient ---
     groups.brightnessGroup.style.display = 'none';
     groups.saturationGroup.style.display = 'flex';
     groups.hueGroup.style.display = 'flex';
-    clock.classList.add('gradient-text');
-    const intensity = inputs.animationIntensity.value / 100;
-    const minSize = 400, maxSize = 600;
-    clock.style.backgroundSize = `${minSize + intensity*(maxSize-minSize)}% 400%`;
-    const speed = 25 - (inputs.animationSpeed.value/100)*24;
-    clock.style.animationDuration = `${speed}s`;
-    clock.classList.add('animated-gradient');
-    clock.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
-    monitoringEl.style.background = clock.style.background;
+    [clock, monitoringEl].forEach(el => {
+      el.classList.add('gradient-text','animated-gradient');
+      el.style.mixBlendMode = 'normal';
+      const intensity = inputs.animationIntensity.value / 100;
+      const minSize = 400, maxSize = 600;
+      el.style.backgroundSize = `${minSize + intensity*(maxSize-minSize)}% 400%`;
+      const speed = 25 - (inputs.animationSpeed.value/100)*24;
+      el.style.animationDuration = `${speed}s`;
+      el.style.filter = `contrast(${contrast}%) saturate(${inputs.saturation.value}%) hue-rotate(${inputs.hue.value}deg)`;
+    });
   }
 
   background.style.background = `url('${inputs.backgroundURL.value}') ${inputs.bgX.value}% ${inputs.bgY.value}% / ${inputs.bgSize.value}% auto no-repeat`;
@@ -253,7 +272,7 @@ function updateMonitoring(data){
   gpuTempEl.textContent = (gpus.length > 0 && typeof gpus[0].temperature === "number") ? `${Math.round(gpus[0].temperature)}°` : "__";
 }
 
-// Cycle 10s horloge / 10s monitoring
+// --- Cycle 10s horloge / 10s monitoring ---
 let showClock = true;
 function cycleDisplay() {
   if(showClock) {
@@ -267,10 +286,10 @@ function cycleDisplay() {
 }
 setInterval(cycleDisplay, 10000);
 
-// NZXT CAM
+// --- NZXT CAM ---
 window.nzxt = { v1: { onMonitoringDataUpdate: data => updateMonitoring(data) } };
 
-// Initialisation
+// --- Initialisation ---
 loadOptions();
 </script>
 </body>
