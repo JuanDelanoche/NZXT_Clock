@@ -73,23 +73,25 @@ html, body {
 #file-input { display: none; }
 
 .content-layer {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0; width: 320px; height: 320px;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  transform: scale(var(--global-scale, 1));
+  pointer-events: none; transform: scale(var(--global-scale, 1));
+  left: 50%; top: 50%; transform-origin: center; transform: translate(-50%, -50%) scale(var(--global-scale, 1));
 }
 .content-layer.active { opacity: 1; z-index: 3; pointer-events: auto; }
 #clock-content {
   text-align: center; color: #fff; gap: var(--hours-spacing, 0px);
-  transform: translateY(var(--clock-y, 0%)) scale(var(--global-scale, 1));
+  transform: translate(-50%, calc(-50% + var(--clock-y, 0%))) scale(var(--global-scale, 1));
+  cursor: move;
 }
 #hours { font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900); }
 #minutes { font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700); margin-top: var(--hours-spacing, 0px); }
 #monitoring-content {
   display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
   gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
-  transform: translateY(var(--monitoring-y, 0%)) scale(var(--global-scale, 1));
+  transform: translate(-50%, calc(-50% + var(--monitoring-y, 0%))) scale(var(--global-scale, 1));
+  cursor: move;
 }
 .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
 .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); }
@@ -142,10 +144,13 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
   min-width: 50px; min-height: 50px; display: block; opacity: 1; transition: all 0.3s;
 }
 #toggle-panel:hover { opacity: 1; transform: scale(1.05); }
-#validate-cam, #return-settings { display: none; }
 
 /* Media query pour Kraken Z63 (320x320) */
-@media (max-height: 320px) {
+@media (max-height: 320px), (max-width: 320px) {
+  #kraken-preview { display: none !important; }
+  #toggle-panel { display: none !important; }
+  #controls { display: none !important; }
+  #bg-container, #bg-layer { width: 320px; height: 320px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
   #hours, #hours-preview { font-size: min(var(--hours-size, 140px), 200px) !important; }
   #minutes, #minutes-preview { font-size: min(var(--minutes-size, 100px), 150px) !important; }
   .temp-value { font-size: min(var(--temp-size, 80px), 100px) !important; }
@@ -215,8 +220,6 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
   <div class="control-group"><label>Luminosité Gradient</label><input type="range" id="gradient-brightness" min="0.5" max="2" step="0.1" value="1.2"></div>
   <div class="control-group"><label>Lum N&B Fond</label><input type="range" id="grayscale-brightness" min="0.1" max="3" step="0.1" value="1"></div>
   <div class="control-group"><label>Contraste N&B</label><input type="range" id="grayscale-contrast" min="0.1" max="4" step="0.1" value="1.5"></div>
-  <div class="control-group"><label>Valider pour NZXT Cam</label><input type="button" id="validate-cam" value="Valider"></div>
-  <div class="control-group"><label>Retour aux Réglages</label><input type="button" id="return-settings" value="Retour"></div>
 </div>
 <button id="toggle-panel">⚙️</button>
 
@@ -268,8 +271,6 @@ const clockContentPreview = document.getElementById('clock-content-preview');
 const monitoringContentPreview = document.getElementById('monitoring-content-preview');
 const controlsPanel = document.getElementById('controls');
 const togglePanel = document.getElementById('toggle-panel');
-const validateCam = document.getElementById('validate-cam');
-const returnSettings = document.getElementById('return-settings');
 const fileInput = document.getElementById('file-input');
 const fileUpload = document.getElementById('file-upload');
 const imageViewer = document.getElementById('image-viewer');
@@ -283,7 +284,6 @@ let images = [];
 let currentImageIndex = 0;
 let viewerImageIndex = 0;
 let slideshowInterval = null;
-let isValidated = false;
 const imageCache = new Map();
 
 function preloadImage(url) {
@@ -565,6 +565,7 @@ document.getElementById('reset-positions').addEventListener('click', () => {
     }
   }
   updateStyles();
+  console.log('Positions reset, clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
 });
 
 function updateClock() {
@@ -575,8 +576,9 @@ function updateClock() {
   document.getElementById('minutes').textContent = minutes;
   document.getElementById('hours-preview').textContent = hours;
   document.getElementById('minutes-preview').textContent = minutes;
+  clockContent.offsetHeight; // Force reflow
   clockContentPreview.offsetHeight; // Force reflow
-  console.log('Clock updated, hours:', hours, 'minutes:', minutes, 'preview opacity:', getComputedStyle(clockContentPreview).opacity);
+  console.log('Clock updated, hours:', hours, 'minutes:', minutes, 'preview opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value);
 }
 setInterval(updateClock, 1000); updateClock();
 
@@ -594,9 +596,11 @@ function cycleContent() {
     clockContentPreview.classList.remove('active');
   }
   showClock = !showClock;
+  clockContent.offsetHeight; // Force reflow
   clockContentPreview.offsetHeight; // Force reflow
+  monitoringContent.offsetHeight; // Force reflow
   monitoringContentPreview.offsetHeight; // Force reflow
-  console.log('Content cycled, showClock:', showClock, 'preview clock active:', clockContentPreview.classList.contains('active'));
+  console.log('Content cycled, showClock:', showClock, 'preview clock active:', clockContentPreview.classList.contains('active'), 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
 }
 setInterval(cycleContent, 10000);
 
@@ -618,7 +622,7 @@ function simulateData() {
     const cpuTemp = `${Math.round(40 + Math.random() * 40)}°`;
     const gpuTemp = `${Math.round(45 + Math.random() * 50)}°`;
     document.getElementById('cpu-temp').textContent = cpuTemp;
-    document.getElementById('gpu-temp').textContent = cpuTemp;
+    document.getElementById('gpu-temp').textContent = gpuTemp;
     document.getElementById('cpu-temp-preview').textContent = cpuTemp;
     document.getElementById('gpu-temp-preview').textContent = gpuTemp;
   }
@@ -722,33 +726,71 @@ function updateStyles() {
   Object.keys(controls).forEach(key => localStorage.setItem(key, controls[key].value));
   clockContent.offsetHeight; // Force reflow
   krakenPreview.offsetHeight; // Force reflow
-  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity);
+  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
 }
 
-let isDragging = false, startX, startY, dragSpeed = 1;
+let isDraggingBg = false, isDraggingClock = false, isDraggingMonitoring = false, startX, startY, dragSpeed = 1;
 bgContainer.addEventListener('mousedown', e => {
-  isDragging = true; startX = e.clientX; startY = e.clientY;
+  isDraggingBg = true; startX = e.clientX; startY = e.clientY;
   dragSpeed = 1; // Reset vitesse
   bgLayer.style.transition = 'none';
+  console.log('Background drag started');
+});
+clockContent.addEventListener('mousedown', e => {
+  if (clockContent.classList.contains('active')) {
+    isDraggingClock = true; startX = e.clientX; startY = e.clientY;
+    dragSpeed = 1;
+    console.log('Clock drag started, clock-y:', controls['clock-y'].value);
+  }
+});
+monitoringContent.addEventListener('mousedown', e => {
+  if (monitoringContent.classList.contains('active')) {
+    isDraggingMonitoring = true; startX = e.clientX; startY = e.clientY;
+    dragSpeed = 1;
+    console.log('Monitoring drag started, monitoring-y:', controls['monitoring-y'].value);
+  }
 });
 document.addEventListener('mousemove', e => {
-  if (!isDragging || images.length === 0) return;
-  const dx = (e.clientX - startX) / window.innerWidth * 100 * dragSpeed;
-  const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
-  images[currentImageIndex].bgX = Math.max(0, Math.min(100, (images[currentImageIndex].bgX || 50) + dx));
-  images[currentImageIndex].bgY = Math.max(0, Math.min(100, (images[currentImageIndex].bgY || 50) + dy));
-  controls['bg-x'].value = images[currentImageIndex].bgX;
-  controls['bg-y'].value = images[currentImageIndex].bgY;
-  applyImageSettings(currentImageIndex);
-  if (viewerImageIndex === currentImageIndex) updateImageViewer();
-  localStorage.setItem('bg-images', JSON.stringify(images));
-  startX = e.clientX; startY = e.clientY;
-  dragSpeed = Math.min(dragSpeed + 0.02, 3); // Accélère progressivement
+  if (isDraggingBg && images.length > 0) {
+    const dx = (e.clientX - startX) / window.innerWidth * 100 * dragSpeed;
+    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
+    images[currentImageIndex].bgX = Math.max(0, Math.min(100, (images[currentImageIndex].bgX || 50) + dx));
+    images[currentImageIndex].bgY = Math.max(0, Math.min(100, (images[currentImageIndex].bgY || 50) + dy));
+    controls['bg-x'].value = images[currentImageIndex].bgX;
+    controls['bg-y'].value = images[currentImageIndex].bgY;
+    applyImageSettings(currentImageIndex);
+    if (viewerImageIndex === currentImageIndex) updateImageViewer();
+    localStorage.setItem('bg-images', JSON.stringify(images));
+    startX = e.clientX; startY = e.clientY;
+    dragSpeed = Math.min(dragSpeed + 0.02, 3); // Accélère progressivement
+    console.log('Background dragged, bgX:', images[currentImageIndex].bgX, 'bgY:', images[currentImageIndex].bgY);
+  }
+  if (isDraggingClock && clockContent.classList.contains('active')) {
+    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
+    const currentY = parseFloat(controls['clock-y'].value) || 0;
+    controls['clock-y'].value = Math.max(-50, Math.min(50, currentY + dy));
+    updateStyles();
+    startX = e.clientX; startY = e.clientY;
+    dragSpeed = Math.min(dragSpeed + 0.02, 3);
+    console.log('Clock dragged, clock-y:', controls['clock-y'].value);
+  }
+  if (isDraggingMonitoring && monitoringContent.classList.contains('active')) {
+    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
+    const currentY = parseFloat(controls['monitoring-y'].value) || 0;
+    controls['monitoring-y'].value = Math.max(-50, Math.min(50, currentY + dy));
+    updateStyles();
+    startX = e.clientX; startY = e.clientY;
+    dragSpeed = Math.min(dragSpeed + 0.02, 3);
+    console.log('Monitoring dragged, monitoring-y:', controls['monitoring-y'].value);
+  }
 });
 document.addEventListener('mouseup', () => {
-  isDragging = false;
+  isDraggingBg = false;
+  isDraggingClock = false;
+  isDraggingMonitoring = false;
   dragSpeed = 1;
   bgLayer.style.transition = 'opacity 0.5s ease';
+  console.log('Drag ended');
 });
 
 Object.values(controls).forEach(control => {
@@ -765,32 +807,8 @@ togglePanel.addEventListener('click', () => {
   const isVisible = controlsPanel.style.display === 'flex';
   controlsPanel.style.display = isVisible ? 'none' : 'flex';
   togglePanel.textContent = isVisible ? '⚙️' : '✕';
-  validateCam.style.display = isVisible ? 'none' : 'block';
-  returnSettings.style.display = 'none';
   krakenPreview.classList.toggle('active', !isVisible);
-  console.log('Toggle panel clicked, controls display:', controlsPanel.style.display, 'isValidated:', isValidated, 'preview active:', krakenPreview.classList.contains('active'), 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
-});
-
-validateCam.addEventListener('click', () => {
-  isValidated = true;
-  controlsPanel.style.display = 'none';
-  togglePanel.style.display = 'none';
-  validateCam.style.display = 'none';
-  returnSettings.style.display = 'block';
-  krakenPreview.classList.remove('active');
-  console.log('Validated for NZXT Cam, controls hidden, returnSettings visible, toggle display:', togglePanel.style.display);
-});
-
-returnSettings.addEventListener('click', () => {
-  isValidated = false;
-  controlsPanel.style.display = 'flex';
-  togglePanel.style.display = 'block';
-  togglePanel.style.opacity = '1';
-  togglePanel.textContent = '✕';
-  validateCam.style.display = 'block';
-  returnSettings.style.display = 'none';
-  krakenPreview.classList.add('active');
-  console.log('Returned to settings, controls display:', controlsPanel.style.display, 'isValidated:', isValidated, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
+  console.log('Toggle panel clicked, controls display:', controlsPanel.style.display, 'preview active:', krakenPreview.classList.contains('active'), 'toggle text:', togglePanel.textContent);
 });
 
 function loadSettings() {
@@ -827,14 +845,12 @@ function loadSettings() {
   }
   updateStyles();
   controlsPanel.style.display = 'none';
-  validateCam.style.display = 'none';
-  returnSettings.style.display = 'none';
   togglePanel.style.display = 'block';
   togglePanel.style.opacity = '1';
   krakenPreview.classList.add('active');
   clockContent.classList.add('active');
   clockContentPreview.classList.add('active');
-  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
+  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
 }
 
 loadSettings();
