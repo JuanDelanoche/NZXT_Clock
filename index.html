@@ -21,16 +21,9 @@ html, body {
 #bg-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background-size: cover; background-position: center;
-  transition: opacity 0.5s ease;
   cursor: grab;
 }
 #bg-layer:active { cursor: grabbing; }
-#bg-layer::before {
-  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-size: cover; background-position: center;
-  opacity: 0; transition: opacity 0.5s ease;
-}
-#bg-layer.transitioning::before { opacity: 1; }
 #bg-layer.grayscale { filter: grayscale(100%) saturate(0%) brightness(var(--grayscale-brightness, 1)) contrast(var(--grayscale-contrast, 1)); }
 
 #kraken-preview {
@@ -56,10 +49,11 @@ html, body {
 }
 #kraken-preview #hours-preview {
   font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900);
+  -webkit-text-stroke: var(--text-stroke, 0.5px) black;
 }
 #kraken-preview #minutes-preview {
   font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700);
-  margin-top: var(--hours-spacing, 0px);
+  margin-top: var(--hours-spacing, 0px); -webkit-text-stroke: var(--text-stroke, 0.5px) black;
 }
 #kraken-preview #monitoring-content-preview {
   display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
@@ -67,8 +61,8 @@ html, body {
   transform: translateY(var(--monitoring-y, 0%)) scale(min(var(--global-scale, 1), 1));
 }
 #kraken-preview .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
-#kraken-preview .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); }
-#kraken-preview .temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; }
+#kraken-preview .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
+#kraken-preview .temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
 
 #file-input { display: none; }
 
@@ -85,8 +79,8 @@ html, body {
   transform: translate(-50%, calc(-50% + var(--clock-y, 0%))) scale(var(--global-scale, 1));
   cursor: move;
 }
-#hours { font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900); }
-#minutes { font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700); margin-top: var(--hours-spacing, 0px); }
+#hours { font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
+#minutes { font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700); margin-top: var(--hours-spacing, 0px); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
 #monitoring-content {
   display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
   gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
@@ -94,15 +88,15 @@ html, body {
   cursor: move;
 }
 .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
-.temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); }
-.temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; }
+.temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
+.temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
 
 body.negative .content-layer, body.gradient .content-layer {
   mix-blend-mode: difference;
   filter: brightness(var(--brightness, 1.2)) contrast(var(--contrast, 1.3)) saturate(var(--saturation, 1.2));
 }
 body.grayscale .content-layer {
-  color: white !important; text-shadow: 0 0 10px rgba(255,255,255,0.8);
+  color: white !important; text-shadow: 0 0 var(--glow-intensity, 10px) rgba(255,255,255,0.9);
   filter: brightness(var(--brightness, 1.2)) contrast(var(--contrast, 1.3)) saturate(var(--saturation, 1.2));
 }
 body.gradient #hours, body.gradient #minutes, body.gradient .temp-value, body.gradient .temp-label {
@@ -196,6 +190,7 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
   <div class="control-group"><label>Espacement Temp</label><input type="range" id="temp-gap" min="-50" max="50" value="8"></div>
   <div class="control-group"><label>Opacité Labels</label><input type="range" id="label-opacity" min="0" max="1" step="0.05" value="0.8"></div>
   <div class="control-group"><label>Glow Intensité</label><input type="range" id="glow-intensity" min="0" max="20" value="10"></div>
+  <div class="control-group"><label>Contour Texte (px)</label><input type="range" id="text-stroke" min="0" max="2" step="0.1" value="0.5"></div>
   <div class="control-group"><label>Pos Y Horloge (%)</label><input type="range" id="clock-y" min="-50" max="50" value="0" step="1"></div>
   <div class="control-group"><label>Pos Y Monitoring (%)</label><input type="range" id="monitoring-y" min="-50" max="50" value="0" step="1"></div>
   <div class="control-group"><label>Échelle Globale (%)</label><input type="range" id="global-scale" min="50" max="300" value="100" step="5"></div>
@@ -238,6 +233,7 @@ const controls = {
   'temp-gap': document.getElementById('temp-gap'),
   'label-opacity': document.getElementById('label-opacity'),
   'glow-intensity': document.getElementById('glow-intensity'),
+  'text-stroke': document.getElementById('text-stroke'),
   'monitoring-y': document.getElementById('monitoring-y'),
   'global-scale': document.getElementById('global-scale'),
   'global-spacing': document.getElementById('global-spacing'),
@@ -359,7 +355,6 @@ function addImage(file) {
         preloadImage(images[0].url).then(success => {
           if (success) {
             applyImageSettings(0);
-            bgLayer.style.opacity = '1';
             previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
           } else {
             bgLayer.style.background = '#1a1a1a';
@@ -436,42 +431,13 @@ function startSlideshow() {
     console.log('Slideshow tick, current:', currentImageIndex, 'next:', nextIndex);
     preloadImage(images[nextIndex].url).then(success => {
       if (!success) {
-        console.warn('Skipping transition due to preload failure');
+        console.warn('Skipping image due to preload failure');
         return;
       }
-      console.log('Transition start, t=0s');
-      const currentImage = images[currentImageIndex];
+      currentImageIndex = nextIndex;
       const nextImage = images[nextIndex];
-      bgLayer.style.backgroundImage = `url(${currentImage.url})`;
-      bgLayer.style.backgroundPosition = `${currentImage.bgX || 50}% ${currentImage.bgY || 50}%`;
-      bgLayer.style.backgroundSize = `${currentImage.bgSize || 100}% auto`;
-      previewBgLayer.style.backgroundImage = `url(${currentImage.url})`;
-      previewBgLayer.style.backgroundPosition = `${currentImage.bgX || 50}% ${currentImage.bgY || 50}%`;
-      previewBgLayer.style.backgroundSize = `${currentImage.bgSize || 100}% auto`;
-      bgLayer.offsetHeight; // Force reflow
-      setTimeout(() => {
-        bgLayer.classList.add('transitioning');
-        bgLayer.style.backgroundImage = `url(${nextImage.url})`;
-        bgLayer.style.backgroundPosition = `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`;
-        bgLayer.style.backgroundSize = `${nextImage.bgSize || 100}% auto`;
-        previewBgLayer.style.backgroundImage = `url(${nextImage.url})`;
-        previewBgLayer.style.backgroundPosition = `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`;
-        previewBgLayer.style.backgroundSize = `${nextImage.bgSize || 100}% auto`;
-        document.body.className = nextImage.mode || 'negative';
-        bgLayer.classList.toggle('grayscale', nextImage.mode === 'grayscale');
-        previewBgLayer.classList.toggle('grayscale', nextImage.mode === 'grayscale');
-        console.log('Applying next image, t=0.01s', 'url:', nextImage.url, 'position:', `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`, 'size:', `${nextImage.bgSize || 100}%`, 'mode:', nextImage.mode);
-        bgLayer.style.opacity = '0';
-        setTimeout(() => {
-          bgLayer.style.opacity = '1';
-          bgLayer.classList.remove('transitioning');
-          currentImageIndex = nextIndex;
-          console.log('Transition completed to image:', nextImage.url, 'mode:', nextImage.mode);
-          setTimeout(() => {
-            console.log('Post-transition check, t=2s', 'opacity:', bgLayer.style.opacity, 'position:', bgLayer.style.backgroundPosition, 'size:', bgLayer.style.backgroundSize, 'image:', bgLayer.style.backgroundImage);
-          }, 1500);
-        }, 500);
-      }, 10);
+      applyImageSettings(nextIndex);
+      console.log('Switched to image', nextIndex, 'url:', nextImage.url, 'position:', `${nextImage.bgX}% ${nextImage.bgY}%`, 'size:', `${nextImage.bgSize}%`, 'mode:', nextImage.mode);
     });
   }, duration);
 }
@@ -480,8 +446,6 @@ function stopSlideshow() {
   if (slideshowInterval) {
     clearInterval(slideshowInterval);
     slideshowInterval = null;
-    bgLayer.style.opacity = '1';
-    bgLayer.classList.remove('transitioning');
     console.log('Slideshow stopped');
   }
 }
@@ -511,7 +475,6 @@ deleteImage.addEventListener('click', () => {
       preloadImage(images[currentImageIndex].url).then(success => {
         if (success) {
           applyImageSettings(currentImageIndex);
-          bgLayer.style.opacity = '1';
           previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
           if (images.length > 1) {
             preloadAllImages().then(() => startSlideshow());
@@ -527,7 +490,6 @@ deleteImage.addEventListener('click', () => {
       currentImageIndex = 0;
       bgLayer.style.backgroundImage = '';
       previewBgLayer.style.backgroundImage = '';
-      bgLayer.style.opacity = '1';
       stopSlideshow();
     }
     updateImageViewer();
@@ -555,7 +517,6 @@ document.getElementById('reset-positions').addEventListener('click', () => {
       preloadImage(images[currentImageIndex].url).then(success => {
         if (success) {
           applyImageSettings(currentImageIndex);
-          bgLayer.style.opacity = '1';
           previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
         } else {
           bgLayer.style.background = '#1a1a1a';
@@ -622,7 +583,7 @@ function simulateData() {
     const cpuTemp = `${Math.round(40 + Math.random() * 40)}°`;
     const gpuTemp = `${Math.round(45 + Math.random() * 50)}°`;
     document.getElementById('cpu-temp').textContent = cpuTemp;
-    document.getElementById('gpu-temp').textContent = gpuTemp;
+    document.getElementById('gpu-temp').textContent = cpuTemp;
     document.getElementById('cpu-temp-preview').textContent = cpuTemp;
     document.getElementById('gpu-temp-preview').textContent = gpuTemp;
   }
@@ -660,6 +621,7 @@ function updateStyles() {
     '--temp-gap': `${parseFloat(controls['temp-gap'].value) * globalSpacing}px`,
     '--label-opacity': controls['label-opacity'].value,
     '--glow-intensity': `${controls['glow-intensity'].value}px`,
+    '--text-stroke': `${controls['text-stroke'].value}px`,
     '--monitoring-y': `${parseFloat(controls['monitoring-y'].value) * globalSpacing}%`,
     '--global-scale': globalScale,
     '--brightness': controls['brightness'].value,
@@ -690,7 +652,6 @@ function updateStyles() {
       preloadImage(images[currentImageIndex].url).then(success => {
         if (success) {
           applyImageSettings(currentImageIndex);
-          bgLayer.style.opacity = '1';
           previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
         } else {
           bgLayer.style.background = '#1a1a1a';
@@ -709,7 +670,6 @@ function updateStyles() {
         currentImageIndex = 0;
         viewerImageIndex = 0;
         applyImageSettings(0);
-        bgLayer.style.opacity = '1';
         previewBgLayer.style.backgroundImage = `url(${url})`;
         localStorage.setItem('bg-images', JSON.stringify(images));
         updateImageViewer();
@@ -726,14 +686,13 @@ function updateStyles() {
   Object.keys(controls).forEach(key => localStorage.setItem(key, controls[key].value));
   clockContent.offsetHeight; // Force reflow
   krakenPreview.offsetHeight; // Force reflow
-  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
+  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value, 'text-stroke:', controls['text-stroke'].value);
 }
 
 let isDraggingBg = false, isDraggingClock = false, isDraggingMonitoring = false, startX, startY, dragSpeed = 1;
 bgContainer.addEventListener('mousedown', e => {
   isDraggingBg = true; startX = e.clientX; startY = e.clientY;
   dragSpeed = 1; // Reset vitesse
-  bgLayer.style.transition = 'none';
   console.log('Background drag started');
 });
 clockContent.addEventListener('mousedown', e => {
@@ -789,7 +748,6 @@ document.addEventListener('mouseup', () => {
   isDraggingClock = false;
   isDraggingMonitoring = false;
   dragSpeed = 1;
-  bgLayer.style.transition = 'opacity 0.5s ease';
   console.log('Drag ended');
 });
 
@@ -833,7 +791,6 @@ function loadSettings() {
         viewerImageIndex = 0;
         preloadAllImages().then(() => {
           applyImageSettings(0);
-          bgLayer.style.opacity = '1';
           previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
           updateImageViewer();
           if (images.length > 1) startSlideshow();
@@ -850,7 +807,7 @@ function loadSettings() {
   krakenPreview.classList.add('active');
   clockContent.classList.add('active');
   clockContentPreview.classList.add('active');
-  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
+  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value, 'text-stroke:', controls['text-stroke'].value);
 }
 
 loadSettings();
