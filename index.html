@@ -33,6 +33,43 @@ html, body {
 #bg-layer.transitioning::before { opacity: 1; }
 #bg-layer.grayscale { filter: grayscale(100%) saturate(0%) brightness(var(--grayscale-brightness, 1)) contrast(var(--grayscale-contrast, 1)); }
 
+#kraken-preview {
+  position: fixed; top: 10px; right: 10px; width: 320px; height: 320px;
+  border-radius: 50%; overflow: hidden; background: #1a1a1a;
+  z-index: 12; border: 2px solid #333; display: none;
+}
+#kraken-preview.active { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+#kraken-preview .bg-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background-size: cover; background-position: center;
+}
+#kraken-preview .content-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(min(var(--global-scale, 1), 1));
+}
+#kraken-preview .content-layer.active { opacity: 1; z-index: 2; }
+#kraken-preview #clock-content-preview {
+  text-align: center; color: #fff; gap: var(--hours-spacing, 0px);
+  transform: translateY(var(--clock-y, 0%)) scale(min(var(--global-scale, 1), 1));
+}
+#kraken-preview #hours-preview {
+  font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900);
+}
+#kraken-preview #minutes-preview {
+  font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700);
+  margin-top: var(--hours-spacing, 0px);
+}
+#kraken-preview #monitoring-content-preview {
+  display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
+  gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
+  transform: translateY(var(--monitoring-y, 0%)) scale(min(var(--global-scale, 1), 1));
+}
+#kraken-preview .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
+#kraken-preview .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); }
+#kraken-preview .temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; }
+
 #file-input { display: none; }
 
 .content-layer {
@@ -40,21 +77,19 @@ html, body {
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  transform: scale(var(--global-scale, 1));
 }
 .content-layer.active { opacity: 1; z-index: 3; pointer-events: auto; }
-
 #clock-content {
-  text-align: center; color: #fff;
-  gap: var(--hours-spacing, 0px);
-  transform: translateY(var(--clock-y, 0%));
+  text-align: center; color: #fff; gap: var(--hours-spacing, 0px);
+  transform: translateY(var(--clock-y, 0%)) scale(var(--global-scale, 1));
 }
 #hours { font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900); }
 #minutes { font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700); margin-top: var(--hours-spacing, 0px); }
-
 #monitoring-content {
   display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
   gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
-  transform: translateY(var(--monitoring-y, 0%));
+  transform: translateY(var(--monitoring-y, 0%)) scale(var(--global-scale, 1));
 }
 .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
 .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); }
@@ -102,17 +137,20 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
 #bg-duration-value { font-size: 10px; opacity: 0.8; text-align: center; }
 
 #toggle-panel {
-  position: fixed; top: 10px; right: 10px; background: linear-gradient(45deg, rgba(0,0,0,0.9), rgba(78,205,196,0.2));
-  color: white; border: none; padding: 12px 18px; border-radius: 25px; cursor: pointer; font-size: 14px; z-index: 11; opacity: 0; transition: all 0.3s;
+  position: fixed; top: 10px; right: calc(320px + 20px); background: linear-gradient(45deg, rgba(0,0,0,0.9), rgba(78,205,196,0.2));
+  color: white; border: none; padding: 12px 18px; border-radius: 25px; cursor: pointer; font-size: 14px; z-index: 14;
+  min-width: 50px; min-height: 50px; display: block; opacity: 1; transition: all 0.3s;
 }
 #toggle-panel:hover { opacity: 1; transform: scale(1.05); }
+#validate-cam, #return-settings { display: none; }
 
-@media (max-height: 480px) {
-  #hours { font-size: 100px !important; }
-  #minutes { font-size: 70px !important; }
-  .temp-value { font-size: 60px !important; }
-  .temp-label { font-size: 14px !important; }
-  #monitoring-content { gap: 40px !important; }
+/* Media query pour Kraken Z63 (320x320) */
+@media (max-height: 320px) {
+  #hours, #hours-preview { font-size: min(var(--hours-size, 140px), 200px) !important; }
+  #minutes, #minutes-preview { font-size: min(var(--minutes-size, 100px), 150px) !important; }
+  .temp-value { font-size: min(var(--temp-size, 80px), 100px) !important; }
+  .temp-label { font-size: min(var(--label-size, 18px), 24px) !important; }
+  #monitoring-content, #monitoring-content-preview { gap: min(var(--temp-spacing, 80px), 40px) !important; }
 }
 </style>
 </head>
@@ -120,6 +158,17 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
 <input type="file" id="file-input" accept="image/*">
 <div id="bg-container">
   <div id="bg-layer"></div>
+</div>
+<div id="kraken-preview" class="active">
+  <div class="bg-layer"></div>
+  <div id="clock-content-preview" class="content-layer active">
+    <div id="hours-preview">--</div>
+    <div id="minutes-preview">--</div>
+  </div>
+  <div id="monitoring-content-preview" class="content-layer">
+    <div class="temp-item"><div class="temp-label">CPU</div><div class="temp-value" id="cpu-temp-preview">--°</div></div>
+    <div class="temp-item"><div class="temp-label">GPU</div><div class="temp-value" id="gpu-temp-preview">--°</div></div>
+  </div>
 </div>
 <div id="clock-content" class="content-layer active">
   <div id="hours">--</div>
@@ -130,27 +179,29 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
   <div class="temp-item"><div class="temp-label">GPU</div><div class="temp-value" id="gpu-temp">--°</div></div>
 </div>
 <div id="controls">
-  <div class="control-group"><label>Taille Heures</label><input type="range" id="hours-size" min="5" max="800" value="140"></div>
-  <div class="control-group"><label>Taille Minutes</label><input type="range" id="minutes-size" min="5" max="600" value="100"></div>
+  <div class="control-group"><label>Taille Heures</label><input type="range" id="hours-size" min="5" max="200" value="140"></div>
+  <div class="control-group"><label>Taille Minutes</label><input type="range" id="minutes-size" min="5" max="150" value="100"></div>
   <div class="control-group"><label>Gras Heures</label><input type="range" id="hours-weight" min="100" max="900" value="900"></div>
   <div class="control-group"><label>Gras Minutes</label><input type="range" id="minutes-weight" min="100" max="900" value="700"></div>
-  <div class="control-group"><label>Espacement H-M</label><input type="range" id="hours-spacing" min="-300" max="200" value="0"></div>
-  <div class="control-group"><label>Taille Températures</label><input type="range" id="temp-size" min="5" max="500" value="80"></div>
-  <div class="control-group"><label>Taille Labels</label><input type="range" id="label-size" min="5" max="100" value="18"></div>
+  <div class="control-group"><label>Espacement H-M</label><input type="range" id="hours-spacing" min="-100" max="100" value="0"></div>
+  <div class="control-group"><label>Taille Températures</label><input type="range" id="temp-size" min="5" max="100" value="80"></div>
+  <div class="control-group"><label>Taille Labels</label><input type="range" id="label-size" min="5" max="24" value="18"></div>
   <div class="control-group"><label>Gras Températures</label><input type="range" id="temp-weight" min="100" max="900" value="900"></div>
-  <div class="control-group"><label>Espacement CPU-GPU</label><input type="range" id="temp-spacing" min="-600" max="600" value="80"></div>
-  <div class="control-group"><label>Espacement Temp</label><input type="range" id="temp-gap" min="-100" max="100" value="8"></div>
+  <div class="control-group"><label>Espacement CPU-GPU</label><input type="range" id="temp-spacing" min="-200" max="200" value="80"></div>
+  <div class="control-group"><label>Espacement Temp</label><input type="range" id="temp-gap" min="-50" max="50" value="8"></div>
   <div class="control-group"><label>Opacité Labels</label><input type="range" id="label-opacity" min="0" max="1" step="0.05" value="0.8"></div>
-  <div class="control-group"><label>Glow Intensité</label><input type="range" id="glow-intensity" min="0" max="50" value="10"></div>
+  <div class="control-group"><label>Glow Intensité</label><input type="range" id="glow-intensity" min="0" max="20" value="10"></div>
   <div class="control-group"><label>Pos Y Horloge (%)</label><input type="range" id="clock-y" min="-50" max="50" value="0" step="1"></div>
   <div class="control-group"><label>Pos Y Monitoring (%)</label><input type="range" id="monitoring-y" min="-50" max="50" value="0" step="1"></div>
+  <div class="control-group"><label>Échelle Globale (%)</label><input type="range" id="global-scale" min="50" max="300" value="100" step="5"></div>
+  <div class="control-group"><label>Espacement Global (%)</label><input type="range" id="global-spacing" min="50" max="200" value="100" step="5"></div>
   <div class="control-group"><label>↻ Reset Positions</label><input type="button" id="reset-positions" value="Centrer"></div>
   <div class="control-group"><label>📁 Ajouter image</label><div class="file-upload" id="file-upload">Ajouter image</div></div>
   <div class="control-group"><label>Durée Image (s)</label><input type="range" id="bg-duration" min="5" max="60" step="1" value="10"><span id="bg-duration-value">10 s</span></div>
   <div class="control-group"><label>Image Actuelle</label><div class="image-viewer" id="image-viewer"><button id="prev-image">&lt;</button><img id="current-image" src="" alt="Image actuelle"><button id="next-image">&gt;</button><button id="delete-image" class="delete-button">✕</button><select id="image-mode"><option value="negative">Négatif</option><option value="gradient">Gradient</option><option value="grayscale">Noir & Blanc</option></select></div></div>
   <div class="control-group"><label>Pos X Image (%)</label><input type="range" id="bg-x" min="0" max="100" value="50"></div>
   <div class="control-group"><label>Pos Y Image (%)</label><input type="range" id="bg-y" min="0" max="100" value="50"></div>
-  <div class="control-group"><label>Taille Image (%)</label><input type="range" id="bg-size" min="25" max="500" value="100"></div>
+  <div class="control-group"><label>Taille Image (%)</label><input type="range" id="bg-size" min="25" max="300" value="100"></div>
   <div class="control-group"><label>URL Fond</label><input type="text" id="bg-url" placeholder="URL image"></div>
   <div class="control-group"><label>Luminosité</label><input type="range" id="brightness" min="0.5" max="3" step="0.1" value="1.2"></div>
   <div class="control-group"><label>Contraste</label><input type="range" id="contrast" min="0.5" max="3" step="0.1" value="1.3"></div>
@@ -164,6 +215,8 @@ input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); bor
   <div class="control-group"><label>Luminosité Gradient</label><input type="range" id="gradient-brightness" min="0.5" max="2" step="0.1" value="1.2"></div>
   <div class="control-group"><label>Lum N&B Fond</label><input type="range" id="grayscale-brightness" min="0.1" max="3" step="0.1" value="1"></div>
   <div class="control-group"><label>Contraste N&B</label><input type="range" id="grayscale-contrast" min="0.1" max="4" step="0.1" value="1.5"></div>
+  <div class="control-group"><label>Valider pour NZXT Cam</label><input type="button" id="validate-cam" value="Valider"></div>
+  <div class="control-group"><label>Retour aux Réglages</label><input type="button" id="return-settings" value="Retour"></div>
 </div>
 <button id="toggle-panel">⚙️</button>
 
@@ -183,6 +236,8 @@ const controls = {
   'label-opacity': document.getElementById('label-opacity'),
   'glow-intensity': document.getElementById('glow-intensity'),
   'monitoring-y': document.getElementById('monitoring-y'),
+  'global-scale': document.getElementById('global-scale'),
+  'global-spacing': document.getElementById('global-spacing'),
   'bg-url': document.getElementById('bg-url'),
   'bg-x': document.getElementById('bg-x'),
   'bg-y': document.getElementById('bg-y'),
@@ -207,8 +262,14 @@ const clockContent = document.getElementById('clock-content');
 const monitoringContent = document.getElementById('monitoring-content');
 const bgContainer = document.getElementById('bg-container');
 const bgLayer = document.getElementById('bg-layer');
+const krakenPreview = document.getElementById('kraken-preview');
+const previewBgLayer = krakenPreview.querySelector('.bg-layer');
+const clockContentPreview = document.getElementById('clock-content-preview');
+const monitoringContentPreview = document.getElementById('monitoring-content-preview');
 const controlsPanel = document.getElementById('controls');
 const togglePanel = document.getElementById('toggle-panel');
+const validateCam = document.getElementById('validate-cam');
+const returnSettings = document.getElementById('return-settings');
 const fileInput = document.getElementById('file-input');
 const fileUpload = document.getElementById('file-upload');
 const imageViewer = document.getElementById('image-viewer');
@@ -222,6 +283,7 @@ let images = [];
 let currentImageIndex = 0;
 let viewerImageIndex = 0;
 let slideshowInterval = null;
+let isValidated = false;
 const imageCache = new Map();
 
 function preloadImage(url) {
@@ -286,9 +348,10 @@ function addImage(file) {
   console.log('Adding image:', file.name);
   loadImageFile(file).then(url => {
     if (url) {
-      images.push({ url, bgX: parseFloat(controls['bg-x'].value), bgY: parseFloat(controls['bg-y'].value), bgSize: parseFloat(controls['bg-size'].value), mode: controls['image-mode'].value });
+      const bgSize = parseFloat(controls['bg-size'].value) || 100;
+      images.push({ url, bgX: parseFloat(controls['bg-x'].value) || 50, bgY: parseFloat(controls['bg-y'].value) || 50, bgSize, mode: controls['image-mode'].value || 'negative' });
       localStorage.setItem('bg-images', JSON.stringify(images));
-      console.log('Images after adding:', images.length);
+      console.log('Images after adding:', images.length, 'bgSize:', bgSize);
       viewerImageIndex = images.length - 1;
       updateImageViewer();
       if (images.length === 1) {
@@ -297,8 +360,10 @@ function addImage(file) {
           if (success) {
             applyImageSettings(0);
             bgLayer.style.opacity = '1';
+            previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
           } else {
             bgLayer.style.background = '#1a1a1a';
+            previewBgLayer.style.background = '#1a1a1a';
           }
         });
       }
@@ -332,21 +397,28 @@ function updateImageViewer() {
     controls['bg-y'].disabled = false;
     controls['bg-size'].disabled = false;
     controls['image-mode'].disabled = false;
-    controls['bg-x'].value = images[viewerImageIndex].bgX;
-    controls['bg-y'].value = images[viewerImageIndex].bgY;
-    controls['bg-size'].value = images[viewerImageIndex].bgSize;
+    controls['bg-x'].value = images[viewerImageIndex].bgX || 50;
+    controls['bg-y'].value = images[viewerImageIndex].bgY || 50;
+    controls['bg-size'].value = images[viewerImageIndex].bgSize || 100;
     controls['image-mode'].value = images[viewerImageIndex].mode || 'negative';
+    console.log('Image viewer updated, bgSize:', images[viewerImageIndex].bgSize);
   }
 }
 
 function applyImageSettings(index) {
   if (images[index]) {
-    const { url, bgX, bgY, bgSize, mode } = images[index];
+    const { url, bgX = 50, bgY = 50, bgSize = 100, mode = 'negative' } = images[index];
     bgLayer.style.backgroundImage = `url(${url})`;
     bgLayer.style.backgroundPosition = `${bgX}% ${bgY}%`;
     bgLayer.style.backgroundSize = `${bgSize}% auto`;
-    document.body.className = mode || 'negative';
+    previewBgLayer.style.backgroundImage = `url(${url})`;
+    previewBgLayer.style.backgroundPosition = `${bgX}% ${bgY}%`;
+    previewBgLayer.style.backgroundSize = `${bgSize}% auto`;
+    document.body.className = mode;
     bgLayer.classList.toggle('grayscale', mode === 'grayscale');
+    previewBgLayer.classList.toggle('grayscale', mode === 'grayscale');
+    bgLayer.offsetHeight; // Force reflow
+    krakenPreview.offsetHeight; // Force reflow preview
     console.log('Applied settings for image', index, 'url:', url, 'position:', `${bgX}% ${bgY}%`, 'size:', `${bgSize}%`, 'mode:', mode);
   }
 }
@@ -368,36 +440,38 @@ function startSlideshow() {
         return;
       }
       console.log('Transition start, t=0s');
-      const { url, bgX, bgY, bgSize, mode } = images[nextIndex];
       const currentImage = images[currentImageIndex];
+      const nextImage = images[nextIndex];
       bgLayer.style.backgroundImage = `url(${currentImage.url})`;
-      bgLayer.style.backgroundPosition = `${currentImage.bgX}% ${currentImage.bgY}%`;
-      bgLayer.style.backgroundSize = `${currentImage.bgSize}% auto`;
+      bgLayer.style.backgroundPosition = `${currentImage.bgX || 50}% ${currentImage.bgY || 50}%`;
+      bgLayer.style.backgroundSize = `${currentImage.bgSize || 100}% auto`;
+      previewBgLayer.style.backgroundImage = `url(${currentImage.url})`;
+      previewBgLayer.style.backgroundPosition = `${currentImage.bgX || 50}% ${currentImage.bgY || 50}%`;
+      previewBgLayer.style.backgroundSize = `${currentImage.bgSize || 100}% auto`;
       bgLayer.offsetHeight; // Force reflow
       setTimeout(() => {
         bgLayer.classList.add('transitioning');
-        bgLayer.style.backgroundImage = `url(${url})`;
-        bgLayer.style.backgroundPosition = `${bgX}% ${bgY}%`;
-        bgLayer.style.backgroundSize = `${bgSize}% auto`;
-        document.body.className = mode || 'negative';
-        bgLayer.classList.toggle('grayscale', mode === 'grayscale');
-        console.log('Applying next image, t=0.01s', 'url:', url, 'position:', `${bgX}% ${bgY}%`, 'size:', `${bgSize}%`, 'mode:', mode);
+        bgLayer.style.backgroundImage = `url(${nextImage.url})`;
+        bgLayer.style.backgroundPosition = `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`;
+        bgLayer.style.backgroundSize = `${nextImage.bgSize || 100}% auto`;
+        previewBgLayer.style.backgroundImage = `url(${nextImage.url})`;
+        previewBgLayer.style.backgroundPosition = `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`;
+        previewBgLayer.style.backgroundSize = `${nextImage.bgSize || 100}% auto`;
+        document.body.className = nextImage.mode || 'negative';
+        bgLayer.classList.toggle('grayscale', nextImage.mode === 'grayscale');
+        previewBgLayer.classList.toggle('grayscale', nextImage.mode === 'grayscale');
+        console.log('Applying next image, t=0.01s', 'url:', nextImage.url, 'position:', `${nextImage.bgX || 50}% ${nextImage.bgY || 50}%`, 'size:', `${nextImage.bgSize || 100}%`, 'mode:', nextImage.mode);
         bgLayer.style.opacity = '0';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            bgLayer.style.opacity = '1';
-          });
-        });
         setTimeout(() => {
-          console.log('Transition end, t=0.5s');
+          bgLayer.style.opacity = '1';
           bgLayer.classList.remove('transitioning');
           currentImageIndex = nextIndex;
-          console.log('Transition completed to image:', url, 'mode:', mode);
+          console.log('Transition completed to image:', nextImage.url, 'mode:', nextImage.mode);
           setTimeout(() => {
             console.log('Post-transition check, t=2s', 'opacity:', bgLayer.style.opacity, 'position:', bgLayer.style.backgroundPosition, 'size:', bgLayer.style.backgroundSize, 'image:', bgLayer.style.backgroundImage);
           }, 1500);
         }, 500);
-      }, 10); // Petit délai pour assurer la synchronisation
+      }, 10);
     });
   }, duration);
 }
@@ -438,6 +512,7 @@ deleteImage.addEventListener('click', () => {
         if (success) {
           applyImageSettings(currentImageIndex);
           bgLayer.style.opacity = '1';
+          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
           if (images.length > 1) {
             preloadAllImages().then(() => startSlideshow());
           } else {
@@ -445,11 +520,13 @@ deleteImage.addEventListener('click', () => {
           }
         } else {
           bgLayer.style.background = '#1a1a1a';
+          previewBgLayer.style.background = '#1a1a1a';
         }
       });
     } else {
       currentImageIndex = 0;
       bgLayer.style.backgroundImage = '';
+      previewBgLayer.style.backgroundImage = '';
       bgLayer.style.opacity = '1';
       stopSlideshow();
     }
@@ -461,6 +538,8 @@ deleteImage.addEventListener('click', () => {
 document.getElementById('reset-positions').addEventListener('click', () => {
   controls['clock-y'].value = '0';
   controls['monitoring-y'].value = '0';
+  controls['global-scale'].value = '100';
+  controls['global-spacing'].value = '100';
   if (images.length > 0) {
     images[viewerImageIndex].bgX = 50;
     images[viewerImageIndex].bgY = 50;
@@ -477,8 +556,10 @@ document.getElementById('reset-positions').addEventListener('click', () => {
         if (success) {
           applyImageSettings(currentImageIndex);
           bgLayer.style.opacity = '1';
+          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
         } else {
           bgLayer.style.background = '#1a1a1a';
+          previewBgLayer.style.background = '#1a1a1a';
         }
       });
     }
@@ -488,8 +569,14 @@ document.getElementById('reset-positions').addEventListener('click', () => {
 
 function updateClock() {
   const now = new Date();
-  document.getElementById('hours').textContent = now.getHours().toString().padStart(2, '0');
-  document.getElementById('minutes').textContent = now.getMinutes().toString().padStart(2, '0');
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  document.getElementById('hours').textContent = hours;
+  document.getElementById('minutes').textContent = minutes;
+  document.getElementById('hours-preview').textContent = hours;
+  document.getElementById('minutes-preview').textContent = minutes;
+  clockContentPreview.offsetHeight; // Force reflow
+  console.log('Clock updated, hours:', hours, 'minutes:', minutes, 'preview opacity:', getComputedStyle(clockContentPreview).opacity);
 }
 setInterval(updateClock, 1000); updateClock();
 
@@ -498,26 +585,42 @@ function cycleContent() {
   if (showClock) {
     clockContent.classList.add('active');
     monitoringContent.classList.remove('active');
+    clockContentPreview.classList.add('active');
+    monitoringContentPreview.classList.remove('active');
   } else {
     monitoringContent.classList.add('active');
     clockContent.classList.remove('active');
+    monitoringContentPreview.classList.add('active');
+    clockContentPreview.classList.remove('active');
   }
   showClock = !showClock;
+  clockContentPreview.offsetHeight; // Force reflow
+  monitoringContentPreview.offsetHeight; // Force reflow
+  console.log('Content cycled, showClock:', showClock, 'preview clock active:', clockContentPreview.classList.contains('active'));
 }
 setInterval(cycleContent, 10000);
 
 function updateMonitoring(data) {
   try {
     const { cpus = [], gpus = [] } = data || {};
-    document.getElementById('cpu-temp').textContent = cpus[0]?.temperature ? `${Math.round(cpus[0].temperature)}°` : '--°';
-    document.getElementById('gpu-temp').textContent = gpus[0]?.temperature ? `${Math.round(cpus[0].temperature)}°` : '--°';
+    const cpuTemp = cpus[0]?.temperature ? `${Math.round(cpus[0].temperature)}°` : '--°';
+    const gpuTemp = gpus[0]?.temperature ? `${Math.round(gpus[0].temperature)}°` : '--°';
+    document.getElementById('cpu-temp').textContent = cpuTemp;
+    document.getElementById('gpu-temp').textContent = gpuTemp;
+    document.getElementById('cpu-temp-preview').textContent = cpuTemp;
+    document.getElementById('gpu-temp-preview').textContent = gpuTemp;
+    console.log('Monitoring updated, cpuTemp:', cpuTemp, 'gpuTemp:', gpuTemp);
   } catch (e) { console.error('Monitoring error:', e); }
 }
 
 function simulateData() {
   if (!window.nzxt?.v1) {
-    document.getElementById('cpu-temp').textContent = `${Math.round(40 + Math.random() * 40)}°`;
-    document.getElementById('gpu-temp').textContent = `${Math.round(45 + Math.random() * 50)}°`;
+    const cpuTemp = `${Math.round(40 + Math.random() * 40)}°`;
+    const gpuTemp = `${Math.round(45 + Math.random() * 50)}°`;
+    document.getElementById('cpu-temp').textContent = cpuTemp;
+    document.getElementById('gpu-temp').textContent = cpuTemp;
+    document.getElementById('cpu-temp-preview').textContent = cpuTemp;
+    document.getElementById('gpu-temp-preview').textContent = gpuTemp;
   }
 }
 setInterval(simulateData, 3000);
@@ -536,23 +639,25 @@ fileInput.addEventListener('change', e => {
 });
 
 function updateStyles() {
-  const root = document.documentElement;
+  const globalScale = parseFloat(controls['global-scale'].value) / 100;
+  const globalSpacing = parseFloat(controls['global-spacing'].value) / 100;
   const styleProps = {
     '--hours-size': `${controls['hours-size'].value}px`,
     '--minutes-size': `${controls['minutes-size'].value}px`,
     '--hours-weight': controls['hours-weight'].value,
     '--minutes-weight': controls['minutes-weight'].value,
-    '--hours-spacing': `${controls['hours-spacing'].value}px`,
-    '--clock-y': `${controls['clock-y'].value}%`,
+    '--hours-spacing': `${parseFloat(controls['hours-spacing'].value) * globalSpacing}px`,
+    '--clock-y': `${parseFloat(controls['clock-y'].value) * globalSpacing}%`,
     '--temp-size': `${controls['temp-size'].value}px`,
     '--label-size': `${controls['label-size'].value}px`,
     '--temp-weight': controls['temp-weight'].value,
     '--label-weight': controls['temp-weight'].value,
-    '--temp-spacing': `${controls['temp-spacing'].value}px`,
-    '--temp-gap': `${controls['temp-gap'].value}px`,
+    '--temp-spacing': `${parseFloat(controls['temp-spacing'].value) * globalSpacing}px`,
+    '--temp-gap': `${parseFloat(controls['temp-gap'].value) * globalSpacing}px`,
     '--label-opacity': controls['label-opacity'].value,
     '--glow-intensity': `${controls['glow-intensity'].value}px`,
-    '--monitoring-y': `${controls['monitoring-y'].value}%`,
+    '--monitoring-y': `${parseFloat(controls['monitoring-y'].value) * globalSpacing}%`,
+    '--global-scale': globalScale,
     '--brightness': controls['brightness'].value,
     '--contrast': controls['contrast'].value,
     '--saturation': controls['saturation'].value,
@@ -566,22 +671,26 @@ function updateStyles() {
     '--grayscale-brightness': controls['grayscale-brightness'].value,
     '--grayscale-contrast': controls['grayscale-contrast'].value
   };
-  Object.entries(styleProps).forEach(([key, value]) => root.style.setProperty(key, value));
+  Object.entries(styleProps).forEach(([key, value]) => document.documentElement.style.setProperty(key, value));
   bgDurationValue.textContent = `${controls['bg-duration'].value} s`;
 
   if (images.length > 0 && images[viewerImageIndex]) {
-    images[viewerImageIndex].bgX = parseFloat(controls['bg-x'].value);
-    images[viewerImageIndex].bgY = parseFloat(controls['bg-y'].value);
-    images[viewerImageIndex].bgSize = parseFloat(controls['bg-size'].value);
-    images[viewerImageIndex].mode = controls['image-mode'].value;
+    const bgSize = parseFloat(controls['bg-size'].value) || 100;
+    images[viewerImageIndex].bgX = parseFloat(controls['bg-x'].value) || 50;
+    images[viewerImageIndex].bgY = parseFloat(controls['bg-y'].value) || 50;
+    images[viewerImageIndex].bgSize = bgSize;
+    images[viewerImageIndex].mode = controls['image-mode'].value || 'negative';
     localStorage.setItem('bg-images', JSON.stringify(images));
+    console.log('Updated image settings, index:', viewerImageIndex, 'bgSize:', bgSize, 'hours-size:', controls['hours-size'].value, 'minutes-size:', controls['minutes-size'].value);
     if (viewerImageIndex === currentImageIndex) {
       preloadImage(images[currentImageIndex].url).then(success => {
         if (success) {
           applyImageSettings(currentImageIndex);
           bgLayer.style.opacity = '1';
+          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
         } else {
           bgLayer.style.background = '#1a1a1a';
+          previewBgLayer.style.background = '#1a1a1a';
         }
       });
     }
@@ -591,45 +700,54 @@ function updateStyles() {
   if (url && images.length === 0) {
     preloadImage(url).then(success => {
       if (success) {
-        images = [{ url, bgX: 50, bgY: 50, bgSize: 100, mode: 'negative' }];
+        const bgSize = parseFloat(controls['bg-size'].value) || 100;
+        images = [{ url, bgX: 50, bgY: 50, bgSize, mode: 'negative' }];
         currentImageIndex = 0;
         viewerImageIndex = 0;
         applyImageSettings(0);
         bgLayer.style.opacity = '1';
+        previewBgLayer.style.backgroundImage = `url(${url})`;
         localStorage.setItem('bg-images', JSON.stringify(images));
         updateImageViewer();
         stopSlideshow();
-        console.log('Loaded URL image:', url);
+        console.log('Loaded URL image:', url, 'bgSize:', bgSize);
       } else {
         bgLayer.style.background = '#1a1a1a';
+        previewBgLayer.style.background = '#1a1a1a';
         console.error('Failed to load URL image:', url);
       }
     });
   }
 
   Object.keys(controls).forEach(key => localStorage.setItem(key, controls[key].value));
+  clockContent.offsetHeight; // Force reflow
+  krakenPreview.offsetHeight; // Force reflow
+  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity);
 }
 
-let isDragging = false, startX, startY;
+let isDragging = false, startX, startY, dragSpeed = 1;
 bgContainer.addEventListener('mousedown', e => {
   isDragging = true; startX = e.clientX; startY = e.clientY;
+  dragSpeed = 1; // Reset vitesse
   bgLayer.style.transition = 'none';
 });
 document.addEventListener('mousemove', e => {
   if (!isDragging || images.length === 0) return;
-  const dx = (e.clientX - startX) / window.innerWidth * 100;
-  const dy = (e.clientY - startY) / window.innerHeight * 100;
-  images[currentImageIndex].bgX = Math.max(0, Math.min(100, images[currentImageIndex].bgX + dx));
-  images[currentImageIndex].bgY = Math.max(0, Math.min(100, images[currentImageIndex].bgY + dy));
+  const dx = (e.clientX - startX) / window.innerWidth * 100 * dragSpeed;
+  const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
+  images[currentImageIndex].bgX = Math.max(0, Math.min(100, (images[currentImageIndex].bgX || 50) + dx));
+  images[currentImageIndex].bgY = Math.max(0, Math.min(100, (images[currentImageIndex].bgY || 50) + dy));
   controls['bg-x'].value = images[currentImageIndex].bgX;
   controls['bg-y'].value = images[currentImageIndex].bgY;
   applyImageSettings(currentImageIndex);
   if (viewerImageIndex === currentImageIndex) updateImageViewer();
   localStorage.setItem('bg-images', JSON.stringify(images));
   startX = e.clientX; startY = e.clientY;
+  dragSpeed = Math.min(dragSpeed + 0.02, 3); // Accélère progressivement
 });
 document.addEventListener('mouseup', () => {
   isDragging = false;
+  dragSpeed = 1;
   bgLayer.style.transition = 'opacity 0.5s ease';
 });
 
@@ -647,6 +765,32 @@ togglePanel.addEventListener('click', () => {
   const isVisible = controlsPanel.style.display === 'flex';
   controlsPanel.style.display = isVisible ? 'none' : 'flex';
   togglePanel.textContent = isVisible ? '⚙️' : '✕';
+  validateCam.style.display = isVisible ? 'none' : 'block';
+  returnSettings.style.display = 'none';
+  krakenPreview.classList.toggle('active', !isVisible);
+  console.log('Toggle panel clicked, controls display:', controlsPanel.style.display, 'isValidated:', isValidated, 'preview active:', krakenPreview.classList.contains('active'), 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
+});
+
+validateCam.addEventListener('click', () => {
+  isValidated = true;
+  controlsPanel.style.display = 'none';
+  togglePanel.style.display = 'none';
+  validateCam.style.display = 'none';
+  returnSettings.style.display = 'block';
+  krakenPreview.classList.remove('active');
+  console.log('Validated for NZXT Cam, controls hidden, returnSettings visible, toggle display:', togglePanel.style.display);
+});
+
+returnSettings.addEventListener('click', () => {
+  isValidated = false;
+  controlsPanel.style.display = 'flex';
+  togglePanel.style.display = 'block';
+  togglePanel.style.opacity = '1';
+  togglePanel.textContent = '✕';
+  validateCam.style.display = 'block';
+  returnSettings.style.display = 'none';
+  krakenPreview.classList.add('active');
+  console.log('Returned to settings, controls display:', controlsPanel.style.display, 'isValidated:', isValidated, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
 });
 
 function loadSettings() {
@@ -658,13 +802,21 @@ function loadSettings() {
   if (savedImages) {
     try {
       images = JSON.parse(savedImages);
-      console.log('Loaded images from localStorage:', images.length);
+      images = images.map(img => ({
+        url: img.url,
+        bgX: parseFloat(img.bgX) || 50,
+        bgY: parseFloat(img.bgY) || 50,
+        bgSize: parseFloat(img.bgSize) || 100,
+        mode: img.mode || 'negative'
+      }));
+      console.log('Loaded images from localStorage:', images.length, 'first image bgSize:', images[0]?.bgSize);
       if (images.length > 0) {
         currentImageIndex = 0;
         viewerImageIndex = 0;
         preloadAllImages().then(() => {
           applyImageSettings(0);
           bgLayer.style.opacity = '1';
+          previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
           updateImageViewer();
           if (images.length > 1) startSlideshow();
         });
@@ -672,29 +824,20 @@ function loadSettings() {
     } catch (e) {
       console.error('Error parsing bg-images from localStorage:', e);
     }
-  } else {
-    const savedBg = localStorage.getItem('bg-image');
-    if (savedBg) {
-      images = [{ url: savedBg, bgX: 50, bgY: 50, bgSize: 100, mode: 'negative' }];
-      localStorage.setItem('bg-images', JSON.stringify(images));
-      console.log('Loaded single image from localStorage:', savedBg);
-      preloadImage(savedBg).then(success => {
-        if (success) {
-          applyImageSettings(0);
-          bgLayer.style.opacity = '1';
-          updateImageViewer();
-        } else {
-          bgLayer.style.background = '#1a1a1a';
-        }
-      });
-    }
   }
   updateStyles();
   controlsPanel.style.display = 'none';
+  validateCam.style.display = 'none';
+  returnSettings.style.display = 'none';
+  togglePanel.style.display = 'block';
+  togglePanel.style.opacity = '1';
+  krakenPreview.classList.add('active');
+  clockContent.classList.add('active');
+  clockContentPreview.classList.add('active');
+  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity);
 }
 
 loadSettings();
-clockContent.classList.add('active');
 </script>
 </body>
 </html>
