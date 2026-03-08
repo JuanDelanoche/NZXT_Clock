@@ -792,7 +792,7 @@ document.getElementById('drop-zone').classList.add('visible');
 // ═══════════════════════════════════════════
 document.getElementById('settings-btn').addEventListener('click',()=>document.getElementById('settings-panel').classList.add('open'));
 document.getElementById('close-panel').addEventListener('click',()=>document.getElementById('settings-panel').classList.remove('open'));
-document.getElementById('save-btn').addEventListener('click',()=>saveToFile());
+document.getElementById('save-btn').addEventListener('click', () => saveToFile());
 document.getElementById('save-btn').addEventListener('mouseenter',function(){ this.style.color='#5afa5a'; this.style.borderColor='#4a8a4a'; this.style.background='rgba(40,120,40,0.25)'; });
 document.getElementById('save-btn').addEventListener('mouseleave',function(){ this.style.color='#3a7a3a'; this.style.borderColor='#2a5a2a'; this.style.background='rgba(40,100,40,0.15)'; });
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1008,10 +1008,11 @@ function drawPreview(idx) {
 }
 
 // ═══════════════════════════════════════════
-//  PERSISTANCE — Le fichier se réécrit lui-même
-//  Les données sont embarquées dans le HTML.
-//  Bouton 💾 → télécharge le fichier à jour.
-//  Tu remplaces le .html → tout est là au prochain démarrage.
+//  PERSISTANCE — données dans une textarea cachée
+//  Le fichier source contient une ligne marqueur :
+//  <!--KRAKEN-DATA:-->
+//  qu'on remplace par <!--KRAKEN-DATA:BASE64-->
+//  Aucun JS n'est touché, aucun risque de parsing.
 // ═══════════════════════════════════════════
 
 function collectSettings() {
@@ -1036,48 +1037,69 @@ function collectSettings() {
   };
 }
 
-// Build the full updated HTML with data embedded
-function buildSaveHTML() {
-  const settings = collectSettings();
-  const imgData  = images.map(img => ({
-    name: img.name, dataURL: img.dataURL,
-    zoom: img.zoom??100, posX: img.posX??50, posY: img.posY??50
-  }));
-  const payload = JSON.stringify({ settings, images: imgData });
+async function saveToFile() {
+  showSaveStatus('Calcul en cours...', false);
+  try {
+    // 1. Lire le fichier source brut
+    const resp = await fetch(location.href);
+    if (!resp.ok) throw new Error('fetch failed');
+    let src = await resp.text();
 
-  // Get current HTML source and inject/replace the saved-data block
-  let html = document.documentElement.outerHTML;
+    // 2. Construire le payload base64
+    const settings = collectSettings();
+    const imgData  = images.map(img => ({
+      name: img.name, dataURL: img.dataURL,
+      zoom: img.zoom ?? 100, posX: img.posX ?? 50, posY: img.posY ?? 50
+    }));
+    const json = JSON.stringify({ settings, images: imgData });
+    const b64  = btoa(unescape(encodeURIComponent(json)));
 
-  // Remove any existing saved-data script tag
-  html = html.replace(/<script id="saved-data">[\s\S]*?<\/script>\n?/, '');
+    // 3. Remplacer le marqueur dans la source — le marqueur est une ligne HTML commentaire,
+    //    jamais du JS, donc aucun risque de casser le parsing.
+    //    On remplace toute ligne commençant par <!--KRAKEN-DATA:
+    src = src.replace(/<!--KRAKEN-DATA:[^-]*-->/g, '<!--KRAKEN-DATA:' + b64 + '-->');
 
-  // Inject before closing </body>
-  const inject = `<script id="saved-data">\nwindow.KRAKEN_SAVED=${payload.replace(/<\//g,'<\\/')};\n</script>\n`;
-  html = html.replace('</body>', inject + '</body>');
-
-  return '<!DOCTYPE html>\n' + html;
+    // 4. Télécharger
+    const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'kraken-clock.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+    showSaveStatus('Telecharge ! Remplace le fichier.', false);
+  } catch(e) {
+    showSaveStatus('ERREUR : ' + e.message, true);
+    console.error(e);
+  }
 }
 
-function triggerDownload(html) {
-  const blob = new Blob([html], {type: 'text/html'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'kraken-clock.html';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function saveToFile() {
-  showSaveStatus('⏳ Génération...', false);
-  setTimeout(() => {
-    try {
-      triggerDownload(buildSaveHTML());
-      showSaveStatus('✓ Fichier téléchargé — remplace l\'ancien !', false);
-    } catch(e) {
-      showSaveStatus('⚠ Erreur : ' + e.message, true);
+function bootFromSaved() {
+  // Lire le commentaire marqueur directement dans le HTML source de la page
+  // en cherchant dans le texte brut de la page via un commentaire visible dans le DOM
+  try {
+    // Parcourir tous les noeuds commentaires du document
+    const walker = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const txt = node.nodeValue.trim();
+      if (txt.startsWith('KRAKEN-DATA:')) {
+        const b64 = txt.slice('KRAKEN-DATA:'.length).trim();
+        if (!b64) return;
+        const json  = decodeURIComponent(escape(atob(b64)));
+        const saved = JSON.parse(json);
+        if (saved.settings) applySettings(saved.settings);
+        if (saved.images && saved.images.length) {
+          images = saved.images;
+          document.getElementById('drop-zone').classList.remove('visible');
+          buildSlides();
+          refreshImgEditor();
+        }
+        return;
+      }
     }
-  }, 50);
+  } catch(e) {
+    console.warn('Restore failed:', e);
+  }
 }
 
 // Show status in panel
@@ -1180,14 +1202,22 @@ function applySettings(s) {
 }
 
 function bootFromSaved() {
-  const saved = window.KRAKEN_SAVED;
-  if (!saved) return;
-  if (saved.settings) applySettings(saved.settings);
-  if (saved.images && saved.images.length) {
-    images = saved.images;
-    document.getElementById('drop-zone').classList.remove('visible');
-    buildSlides();
-    refreshImgEditor();
+  try {
+    const el = document.getElementById('saved-data');
+    if (!el) return;
+    const b64     = el.textContent.trim();
+    if (!b64) return;
+    const json    = decodeURIComponent(escape(atob(b64)));
+    const saved   = JSON.parse(json);
+    if (saved.settings) applySettings(saved.settings);
+    if (saved.images && saved.images.length) {
+      images = saved.images;
+      document.getElementById('drop-zone').classList.remove('visible');
+      buildSlides();
+      refreshImgEditor();
+    }
+  } catch(e) {
+    console.warn('Boot restore failed:', e);
   }
 }
 
@@ -1195,5 +1225,6 @@ bootFromSaved();
 
 
 </script>
+<!--KRAKEN-DATA:-->
 </body>
 </html>
