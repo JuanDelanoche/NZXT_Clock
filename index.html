@@ -264,12 +264,7 @@ html, body {
   <div class="panel-top">
     <span class="panel-title">⚙ KRAKEN CLOCK</span>
     <div style="display:flex;align-items:center;gap:8px">
-      <div id="save-btn" title="Sauvegarder le fichier" style="
-        cursor:pointer; font-family:'Share Tech Mono',monospace; font-size:9px;
-        letter-spacing:1px; color:#3a7a3a; border:1px solid #2a5a2a;
-        padding:3px 8px; border-radius:2px; transition:all 0.2s;
-        background:rgba(40,100,40,0.15);
-      ">💾 SAUVEGARDER</div>
+      <div id="save-indicator" style="font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:#2a4a2a;transition:color 0.5s">● AUTO-SAVE</div>
       <div class="panel-close" id="close-panel">✕</div>
     </div>
   </div>
@@ -772,6 +767,7 @@ function loadFiles(files) {
       if(++loaded===toLoad.length){
         document.getElementById('drop-zone').classList.remove('visible');
         buildSlides(); refreshImgEditor();
+        saveAll();
       }
     };
     r.readAsDataURL(file);
@@ -792,9 +788,7 @@ document.getElementById('drop-zone').classList.add('visible');
 // ═══════════════════════════════════════════
 document.getElementById('settings-btn').addEventListener('click',()=>document.getElementById('settings-panel').classList.add('open'));
 document.getElementById('close-panel').addEventListener('click',()=>document.getElementById('settings-panel').classList.remove('open'));
-document.getElementById('save-btn').addEventListener('click', () => saveToFile());
-document.getElementById('save-btn').addEventListener('mouseenter',function(){ this.style.color='#5afa5a'; this.style.borderColor='#4a8a4a'; this.style.background='rgba(40,120,40,0.25)'; });
-document.getElementById('save-btn').addEventListener('mouseleave',function(){ this.style.color='#3a7a3a'; this.style.borderColor='#2a5a2a'; this.style.background='rgba(40,100,40,0.15)'; });
+
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1008,12 +1002,13 @@ function drawPreview(idx) {
 }
 
 // ═══════════════════════════════════════════
-//  PERSISTANCE — données dans une textarea cachée
-//  Le fichier source contient une ligne marqueur :
-//  <!--KRAKEN-DATA:-->
-//  qu'on remplace par <!--KRAKEN-DATA:BASE64-->
-//  Aucun JS n'est touché, aucun risque de parsing.
+//  PERSISTANCE — localStorage
+//  Images stockees en dataURL base64.
+//  Fonctionne en file:// sans aucun fetch.
 // ═══════════════════════════════════════════
+
+const LS_SETTINGS = 'kraken-clock-v2-settings';
+const LS_IMAGES   = 'kraken-clock-v2-images';
 
 function collectSettings() {
   return {
@@ -1037,133 +1032,90 @@ function collectSettings() {
   };
 }
 
-async function saveToFile() {
-  showSaveStatus('Calcul en cours...', false);
+function saveAll() {
   try {
-    // 1. Lire le fichier source brut
-    const resp = await fetch(location.href);
-    if (!resp.ok) throw new Error('fetch failed');
-    let src = await resp.text();
-
-    // 2. Construire le payload base64
-    const settings = collectSettings();
-    const imgData  = images.map(img => ({
-      name: img.name, dataURL: img.dataURL,
-      zoom: img.zoom ?? 100, posX: img.posX ?? 50, posY: img.posY ?? 50
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(collectSettings()));
+  } catch(e) { console.warn('Settings save failed', e); }
+  try {
+    const toStore = images.map(img => ({
+      name:    img.name,
+      dataURL: img.dataURL,
+      zoom:    img.zoom  ?? 100,
+      posX:    img.posX  ?? 50,
+      posY:    img.posY  ?? 50,
     }));
-    const json = JSON.stringify({ settings, images: imgData });
-    const b64  = btoa(unescape(encodeURIComponent(json)));
-
-    // 3. Remplacer le marqueur dans la source — le marqueur est une ligne HTML commentaire,
-    //    jamais du JS, donc aucun risque de casser le parsing.
-    //    On remplace toute ligne commençant par <!--KRAKEN-DATA:
-    src = src.replace(/<!--KRAKEN-DATA:[^-]*-->/g, '<!--KRAKEN-DATA:' + b64 + '-->');
-
-    // 4. Télécharger
-    const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'kraken-clock.html';
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
-    showSaveStatus('Telecharge ! Remplace le fichier.', false);
+    localStorage.setItem(LS_IMAGES, JSON.stringify(toStore));
   } catch(e) {
-    showSaveStatus('ERREUR : ' + e.message, true);
-    console.error(e);
+    console.warn('Images save failed (quota?)', e);
+    showSaveStatus('Images trop lourdes pour le stockage local', true);
   }
 }
 
-function bootFromSaved() {
-  // Lire le commentaire marqueur directement dans le HTML source de la page
-  // en cherchant dans le texte brut de la page via un commentaire visible dans le DOM
-  try {
-    // Parcourir tous les noeuds commentaires du document
-    const walker = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT);
-    let node;
-    while ((node = walker.nextNode())) {
-      const txt = node.nodeValue.trim();
-      if (txt.startsWith('KRAKEN-DATA:')) {
-        const b64 = txt.slice('KRAKEN-DATA:'.length).trim();
-        if (!b64) return;
-        const json  = decodeURIComponent(escape(atob(b64)));
-        const saved = JSON.parse(json);
-        if (saved.settings) applySettings(saved.settings);
-        if (saved.images && saved.images.length) {
-          images = saved.images;
-          document.getElementById('drop-zone').classList.remove('visible');
-          buildSlides();
-          refreshImgEditor();
-        }
-        return;
-      }
+let _saveTimer = null;
+function scheduleSave() {
+  clearTimeout(_saveTimer);
+  const ind = document.getElementById('save-indicator');
+  if (ind) { ind.style.color = '#5afa5a'; ind.textContent = '● SAVING...'; }
+  _saveTimer = setTimeout(() => {
+    saveAll();
+    if (ind) {
+      ind.textContent = '● SAVED';
+      ind.style.color = '#3a7a3a';
+      setTimeout(() => { ind.textContent = '● AUTO-SAVE'; ind.style.color = '#2a4a2a'; }, 1500);
     }
-  } catch(e) {
-    console.warn('Restore failed:', e);
-  }
+  }, 400);
 }
 
-// Show status in panel
 function showSaveStatus(msg, isError) {
   let el = document.getElementById('save-status');
   if (!el) {
     el = document.createElement('div');
     el.id = 'save-status';
-    el.style.cssText = `
-      position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-      z-index:300; font-family:'Share Tech Mono',monospace; font-size:8px;
-      letter-spacing:1px; text-transform:uppercase; padding:5px 12px;
-      background:rgba(0,0,0,0.9); border:1px solid rgba(255,255,255,0.1);
-      pointer-events:none; white-space:nowrap; transition:opacity 0.5s;
-      max-width: 280px; text-align:center; line-height:1.4;
-    `;
+    el.style.cssText = 'position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:300;font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;background:rgba(0,0,0,0.9);border:1px solid rgba(255,255,255,0.1);pointer-events:none;white-space:nowrap;transition:opacity 0.5s;max-width:280px;text-align:center;line-height:1.4';
     document.getElementById('settings-panel').appendChild(el);
   }
-  el.textContent = msg;
+  el.textContent   = msg;
   el.style.color   = isError ? '#e55' : '#5a5';
   el.style.opacity = '1';
   clearTimeout(el._t);
-  el._t = setTimeout(() => { el.style.opacity = '0'; }, isError ? 4000 : 3000);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, isError ? 4000 : 2000);
 }
 
-// ─── RESTORE from embedded data on load ──────────
 function applySettings(s) {
   if (!s) return;
-
   if (s.font) {
     root.style.setProperty('--clock-font', s.font);
     document.querySelectorAll('.font-opt').forEach(o =>
       o.classList.toggle('selected', o.dataset.font === s.font));
   }
   const setSlider = (id, valId, suf, cssVar, val, fn) => {
-    if (val === undefined) return;
-    document.getElementById(id).value = val;
-    document.getElementById(valId).textContent = val + suf;
+    if (val === undefined || val === null) return;
+    const el = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    if (!el || !vl) return;
+    el.value = val;
+    vl.textContent = val + suf;
     if (cssVar) root.style.setProperty(cssVar, val + suf);
     if (fn) fn(val);
   };
-  setSlider('hours-size','hours-size-val','px','--hours-size', s.hoursSize);
-  setSlider('minutes-size','minutes-size-val','px','--minutes-size', s.minutesSize);
-  setSlider('clock-gap','clock-gap-val','px','--clock-gap', s.clockGap);
-  setSlider('letter-spacing','letter-spacing-val','px','--clock-letter-spacing', s.letterSpacing);
-  setSlider('clock-opacity','clock-opacity-val','%',null, s.clockOpacity, v => root.style.setProperty('--clock-opacity', v/100));
-  setSlider('clock-rotate','clock-rotate-val','°',null, s.clockRotate, v => { clockRotate = parseInt(v); });
-  setSlider('glow-size','glow-size-val','px',null, s.glowSize, v => { glowSize = parseInt(v); });
-  setSlider('stroke-width','stroke-width-val','px',null, s.strokeWidth, v => {
+  setSlider('hours-size',    'hours-size-val',    'px', '--hours-size',           s.hoursSize);
+  setSlider('minutes-size',  'minutes-size-val',  'px', '--minutes-size',         s.minutesSize);
+  setSlider('clock-gap',     'clock-gap-val',     'px', '--clock-gap',            s.clockGap);
+  setSlider('letter-spacing','letter-spacing-val','px', '--clock-letter-spacing', s.letterSpacing);
+  setSlider('clock-opacity', 'clock-opacity-val', '%',  null, s.clockOpacity,  v => root.style.setProperty('--clock-opacity', v/100));
+  setSlider('clock-rotate',  'clock-rotate-val',  '°',  null, s.clockRotate,   v => { clockRotate = parseInt(v); });
+  setSlider('glow-size',     'glow-size-val',     'px', null, s.glowSize,      v => { glowSize    = parseInt(v); });
+  setSlider('stroke-width',  'stroke-width-val',  'px', null, s.strokeWidth,   v => {
     strokeW = parseInt(v);
     const morph = document.querySelector('#text-stroke feMorphology');
     if (morph) morph.setAttribute('radius', strokeW > 0 ? strokeW : '0');
   });
   updateClockFilter();
-
-  const setPills = (containerId, val, attr) => {
-    document.querySelectorAll(`#${containerId} .pill`).forEach(p =>
-      p.classList.toggle('selected', p.dataset[attr] === String(val)));
-  };
-  if (s.hoursWeight)   { root.style.setProperty('--hours-weight', s.hoursWeight);   setPills('hours-wt', s.hoursWeight, 'w'); }
-  if (s.minutesWeight) { root.style.setProperty('--minutes-weight', s.minutesWeight); setPills('minutes-wt', s.minutesWeight, 'w'); }
-
+  if (s.hoursWeight)   { root.style.setProperty('--hours-weight',   s.hoursWeight);
+    document.querySelectorAll('#hours-wt .pill').forEach(p => p.classList.toggle('selected', p.dataset.w === String(s.hoursWeight))); }
+  if (s.minutesWeight) { root.style.setProperty('--minutes-weight', s.minutesWeight);
+    document.querySelectorAll('#minutes-wt .pill').forEach(p => p.classList.toggle('selected', p.dataset.w === String(s.minutesWeight))); }
   if (s.clockPX !== undefined) setClockPos(s.clockPX, s.clockPY);
-
   if (s.slideDuration) {
     slideDuration = s.slideDuration;
     document.querySelectorAll('#dur-pills .pill').forEach(p =>
@@ -1171,60 +1123,57 @@ function applySettings(s) {
   }
   if (s.transType) {
     transType = s.transType;
-    document.querySelectorAll('.trans-opt').forEach(o =>
-      o.classList.toggle('selected', o.dataset.t === transType));
+    document.querySelectorAll('.trans-opt').forEach(o => o.classList.toggle('selected', o.dataset.t === transType));
   }
   if (s.transSpeed !== undefined) {
     transSpeed = parseInt(s.transSpeed);
     document.getElementById('trans-speed').value = s.transSpeed;
-    document.getElementById('trans-speed-val').textContent = (s.transSpeed/1000).toFixed(1)+'s';
+    document.getElementById('trans-speed-val').textContent = (s.transSpeed/1000).toFixed(1) + 's';
   }
-
-  // Effects
   if (s.tintColor) {
-    document.querySelectorAll('.swatch').forEach(sw =>
-      sw.classList.toggle('selected', sw.dataset.color === s.tintColor));
+    document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('selected', sw.dataset.color === s.tintColor));
     if (s.tintColor !== 'none') root.style.setProperty('--tint-color', s.tintColor);
   }
-  setSlider('tint-opacity','tint-opacity-val','%',null, s.tintOpacity, v => {
+  setSlider('tint-opacity', 'tint-opacity-val', '%', null, s.tintOpacity, v => {
     root.style.setProperty('--tint-opacity', v/100);
     document.getElementById('tint-overlay').style.opacity = v/100;
   });
-  setSlider('vignette','vignette-val','%',null, s.vignette, v => {
+  setSlider('vignette', 'vignette-val', '%', null, s.vignette, v => {
     document.getElementById('vignette-overlay').style.background =
-      `radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,${v/100}) 100%)`;
+      'radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,' + (v/100) + ') 100%)';
   });
-  setSlider('bg-blur','bg-blur-val','px',null, s.bgBlur,     v => { bgBlur     = parseInt(v); });
-  setSlider('bg-bright','bg-bright-val','%',null, s.bgBright, v => { bgBright   = parseInt(v); });
-  setSlider('bg-contrast','bg-contrast-val','%',null, s.bgContrast, v => { bgContrast = parseInt(v); });
-  setSlider('bg-sat','bg-sat-val','%',null, s.bgSat,         v => { bgSat      = parseInt(v); });
+  setSlider('bg-blur',     'bg-blur-val',     'px', null, s.bgBlur,     v => { bgBlur     = parseInt(v); });
+  setSlider('bg-bright',   'bg-bright-val',   '%',  null, s.bgBright,   v => { bgBright   = parseInt(v); });
+  setSlider('bg-contrast', 'bg-contrast-val', '%',  null, s.bgContrast, v => { bgContrast = parseInt(v); });
+  setSlider('bg-sat',      'bg-sat-val',      '%',  null, s.bgSat,      v => { bgSat      = parseInt(v); });
   updateAllSlideFilters();
 }
 
 function bootFromSaved() {
   try {
-    const el = document.getElementById('saved-data');
-    if (!el) return;
-    const b64     = el.textContent.trim();
-    if (!b64) return;
-    const json    = decodeURIComponent(escape(atob(b64)));
-    const saved   = JSON.parse(json);
-    if (saved.settings) applySettings(saved.settings);
-    if (saved.images && saved.images.length) {
-      images = saved.images;
-      document.getElementById('drop-zone').classList.remove('visible');
-      buildSlides();
-      refreshImgEditor();
+    const raw = localStorage.getItem(LS_SETTINGS);
+    if (raw) applySettings(JSON.parse(raw));
+  } catch(e) { console.warn('Settings restore failed:', e); }
+  try {
+    const raw = localStorage.getItem(LS_IMAGES);
+    if (raw) {
+      const stored = JSON.parse(raw);
+      if (stored && stored.length) {
+        images = stored;
+        document.getElementById('drop-zone').classList.remove('visible');
+        buildSlides();
+        refreshImgEditor();
+      }
     }
-  } catch(e) {
-    console.warn('Boot restore failed:', e);
-  }
+  } catch(e) { console.warn('Images restore failed:', e); }
 }
+
+document.getElementById('settings-panel').addEventListener('input', scheduleSave);
+document.getElementById('settings-panel').addEventListener('click', scheduleSave);
 
 bootFromSaved();
 
 
 </script>
-<!--KRAKEN-DATA:-->
 </body>
 </html>
