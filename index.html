@@ -538,8 +538,8 @@ clockEl.addEventListener('pointermove', e => {
   if (!isDragging) return;
   setClockPos(dStartPX+((e.clientX-dStartX)/320)*100, dStartPY+((e.clientY-dStartY)/320)*100);
 });
-clockEl.addEventListener('pointerup', () => { isDragging=false; clockEl.classList.remove('dragging'); });
-clockEl.addEventListener('dblclick', () => setClockPos(50,50));
+clockEl.addEventListener('pointerup', () => { isDragging=false; clockEl.classList.remove('dragging'); scheduleSave(); });
+clockEl.addEventListener('dblclick', () => { setClockPos(50,50); scheduleSave(); });
 
 // ═══════════════════════════════════════════
 //  SLIDESHOW — clean state machine
@@ -764,6 +764,7 @@ function loadFiles(files) {
       if(++loaded===toLoad.length){
         document.getElementById('drop-zone').classList.remove('visible');
         buildSlides(); refreshImgEditor();
+        saveAll(); showSaveStatus('✓ Images sauvegardées');
       }
     };
     r.readAsDataURL(file);
@@ -947,6 +948,7 @@ function refreshImgEditor() {
         document.getElementById('progress-bar').style.width='0%';
       } else buildSlides();
       refreshImgEditor();
+      saveAll(); showSaveStatus('✓ Sauvegardé');
     });
 
     function imgSlider(cls, key, suffix, valCls) {
@@ -955,6 +957,7 @@ function refreshImgEditor() {
         images[idx][key]=parseInt(this.value);
         card.querySelector(valCls).textContent=this.value+suffix;
         updateSlideStyle(idx); drawPreview(idx);
+        scheduleSave();
       });
     }
     imgSlider('.img-zoom','zoom','%','.iz-v');
@@ -971,6 +974,7 @@ function refreshImgEditor() {
       card.querySelector('.ipx-v').textContent='50%';
       card.querySelector('.ipy-v').textContent='50%';
       updateSlideStyle(idx); drawPreview(idx);
+      scheduleSave();
     });
 
     list.appendChild(card);
@@ -995,6 +999,249 @@ function drawPreview(idx) {
   };
   image.src=img.dataURL;
 }
+
+// ═══════════════════════════════════════════
+//  PERSISTANCE — localStorage
+// ═══════════════════════════════════════════
+
+const SETTINGS_KEY = 'kraken-clock-settings';
+const IMAGES_KEY   = 'kraken-clock-images';
+
+function collectSettings() {
+  return {
+    // Clock
+    hoursSize:     document.getElementById('hours-size').value,
+    minutesSize:   document.getElementById('minutes-size').value,
+    hoursWeight:   document.querySelector('#hours-wt .pill.selected')?.dataset.w ?? '900',
+    minutesWeight: document.querySelector('#minutes-wt .pill.selected')?.dataset.w ?? '900',
+    font:          document.querySelector('#font-grid .font-opt.selected')?.dataset.font ?? "'Orbitron',monospace",
+    clockGap:      document.getElementById('clock-gap').value,
+    letterSpacing: document.getElementById('letter-spacing').value,
+    clockOpacity:  document.getElementById('clock-opacity').value,
+    strokeWidth:   document.getElementById('stroke-width').value,
+    clockRotate:   document.getElementById('clock-rotate').value,
+    glowSize:      document.getElementById('glow-size').value,
+    clockPX, clockPY,
+    // Slideshow
+    slideDuration,
+    transType,
+    transSpeed,
+    // Effects
+    tintColor:    document.querySelector('#tint-swatches .swatch.selected')?.dataset.color ?? 'none',
+    tintOpacity:  document.getElementById('tint-opacity').value,
+    vignette:     document.getElementById('vignette').value,
+    bgBlur, bgBright, bgContrast, bgSat,
+  };
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings()));
+  } catch(e) { console.warn('Settings save failed', e); }
+}
+
+function saveImages() {
+  try {
+    // Store only metadata + dataURL per image
+    const toStore = images.map(img => ({
+      name: img.name,
+      dataURL: img.dataURL,
+      zoom: img.zoom ?? 100,
+      posX: img.posX ?? 50,
+      posY: img.posY ?? 50,
+    }));
+    localStorage.setItem(IMAGES_KEY, JSON.stringify(toStore));
+  } catch(e) {
+    console.warn('Images save failed (quota?)', e);
+    showSaveStatus('⚠ Images trop lourdes pour être sauvegardées', true);
+  }
+}
+
+function saveAll() { saveSettings(); saveImages(); }
+
+// Auto-save on any setting interaction — debounced
+let saveDebounce = null;
+function scheduleSave() {
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(saveAll, 600);
+}
+
+// Show a brief status indicator
+function showSaveStatus(msg, isError) {
+  let el = document.getElementById('save-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'save-status';
+    el.style.cssText = `
+      position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+      z-index:300; font-family:'Share Tech Mono',monospace; font-size:8px;
+      letter-spacing:2px; text-transform:uppercase; padding:4px 10px;
+      background:rgba(0,0,0,0.85); color:#555; border:1px solid rgba(255,255,255,0.08);
+      pointer-events:none; white-space:nowrap; transition:opacity 0.4s;
+    `;
+    document.getElementById('settings-panel').appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.color = isError ? '#e44' : '#3a3a3a';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.opacity='0'; }, 2000);
+}
+
+// ─── RESTORE ────────────────────────────────────
+function applySettings(s) {
+  if (!s) return;
+
+  // Clock font
+  if (s.font) {
+    root.style.setProperty('--clock-font', s.font);
+    document.querySelectorAll('.font-opt').forEach(o => {
+      o.classList.toggle('selected', o.dataset.font === s.font);
+    });
+  }
+
+  // Hours
+  if (s.hoursSize !== undefined) {
+    document.getElementById('hours-size').value = s.hoursSize;
+    document.getElementById('hours-size-val').textContent = s.hoursSize+'px';
+    root.style.setProperty('--hours-size', s.hoursSize+'px');
+  }
+  if (s.hoursWeight) {
+    root.style.setProperty('--hours-weight', s.hoursWeight);
+    document.querySelectorAll('#hours-wt .pill').forEach(p =>
+      p.classList.toggle('selected', p.dataset.w === s.hoursWeight));
+  }
+
+  // Minutes
+  if (s.minutesSize !== undefined) {
+    document.getElementById('minutes-size').value = s.minutesSize;
+    document.getElementById('minutes-size-val').textContent = s.minutesSize+'px';
+    root.style.setProperty('--minutes-size', s.minutesSize+'px');
+  }
+  if (s.minutesWeight) {
+    root.style.setProperty('--minutes-weight', s.minutesWeight);
+    document.querySelectorAll('#minutes-wt .pill').forEach(p =>
+      p.classList.toggle('selected', p.dataset.w === s.minutesWeight));
+  }
+
+  // Gap, spacing, opacity
+  const sl = (id, valId, suffix, cssVar, val, fn) => {
+    if (val === undefined) return;
+    document.getElementById(id).value = val;
+    document.getElementById(valId).textContent = val+suffix;
+    if (cssVar) root.style.setProperty(cssVar, val+suffix);
+    if (fn) fn(val);
+  };
+  sl('clock-gap','clock-gap-val','px','--clock-gap', s.clockGap);
+  sl('letter-spacing','letter-spacing-val','px','--clock-letter-spacing', s.letterSpacing);
+  sl('clock-opacity','clock-opacity-val','%',null, s.clockOpacity, v=>root.style.setProperty('--clock-opacity',v/100));
+
+  // Stroke
+  if (s.strokeWidth !== undefined) {
+    document.getElementById('stroke-width').value = s.strokeWidth;
+    document.getElementById('stroke-width-val').textContent = s.strokeWidth+'px';
+    strokeW = parseInt(s.strokeWidth);
+    const morph = document.querySelector('#text-stroke feMorphology');
+    if (morph) morph.setAttribute('radius', strokeW > 0 ? strokeW : '0');
+  }
+
+  // Rotate & glow
+  if (s.clockRotate !== undefined) {
+    clockRotate = parseInt(s.clockRotate);
+    document.getElementById('clock-rotate').value = s.clockRotate;
+    document.getElementById('clock-rotate-val').textContent = s.clockRotate+'°';
+  }
+  if (s.glowSize !== undefined) {
+    glowSize = parseInt(s.glowSize);
+    document.getElementById('glow-size').value = s.glowSize;
+    document.getElementById('glow-size-val').textContent = s.glowSize+'px';
+  }
+  updateClockFilter();
+
+  // Clock position
+  if (s.clockPX !== undefined) setClockPos(s.clockPX, s.clockPY);
+
+  // Slideshow
+  if (s.slideDuration) {
+    slideDuration = s.slideDuration;
+    document.querySelectorAll('#dur-pills .pill').forEach(p =>
+      p.classList.toggle('selected', parseInt(p.dataset.d) === slideDuration));
+  }
+  if (s.transType) {
+    transType = s.transType;
+    document.querySelectorAll('.trans-opt').forEach(o =>
+      o.classList.toggle('selected', o.dataset.t === transType));
+  }
+  if (s.transSpeed !== undefined) {
+    transSpeed = parseInt(s.transSpeed);
+    document.getElementById('trans-speed').value = s.transSpeed;
+    document.getElementById('trans-speed-val').textContent = (s.transSpeed/1000).toFixed(1)+'s';
+  }
+
+  // Effects — tint
+  if (s.tintColor) {
+    document.querySelectorAll('.swatch').forEach(sw =>
+      sw.classList.toggle('selected', sw.dataset.color === s.tintColor));
+    if (s.tintColor !== 'none') root.style.setProperty('--tint-color', s.tintColor);
+  }
+  if (s.tintOpacity !== undefined) {
+    document.getElementById('tint-opacity').value = s.tintOpacity;
+    document.getElementById('tint-opacity-val').textContent = s.tintOpacity+'%';
+    root.style.setProperty('--tint-opacity', s.tintOpacity/100);
+    document.getElementById('tint-overlay').style.opacity = s.tintOpacity/100;
+  }
+
+  // Vignette
+  if (s.vignette !== undefined) {
+    document.getElementById('vignette').value = s.vignette;
+    document.getElementById('vignette-val').textContent = s.vignette+'%';
+    document.getElementById('vignette-overlay').style.background =
+      `radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,${s.vignette/100}) 100%)`;
+  }
+
+  // BG filters
+  if (s.bgBlur      !== undefined) { bgBlur     =parseInt(s.bgBlur);     document.getElementById('bg-blur').value     =s.bgBlur;     document.getElementById('bg-blur-val').textContent    =s.bgBlur+'px'; }
+  if (s.bgBright    !== undefined) { bgBright   =parseInt(s.bgBright);   document.getElementById('bg-bright').value   =s.bgBright;   document.getElementById('bg-bright-val').textContent  =s.bgBright+'%'; }
+  if (s.bgContrast  !== undefined) { bgContrast =parseInt(s.bgContrast); document.getElementById('bg-contrast').value =s.bgContrast; document.getElementById('bg-contrast-val').textContent=s.bgContrast+'%'; }
+  if (s.bgSat       !== undefined) { bgSat      =parseInt(s.bgSat);      document.getElementById('bg-sat').value      =s.bgSat;      document.getElementById('bg-sat-val').textContent     =s.bgSat+'%'; }
+  updateAllSlideFilters();
+}
+
+async function restoreFromStorage() {
+  // Settings
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) applySettings(JSON.parse(raw));
+  } catch(e) { console.warn('Settings restore failed', e); }
+
+  // Images
+  try {
+    const raw = localStorage.getItem(IMAGES_KEY);
+    if (raw) {
+      const stored = JSON.parse(raw);
+      if (stored && stored.length) {
+        images = stored;
+        document.getElementById('drop-zone').classList.remove('visible');
+        buildSlides();
+        refreshImgEditor();
+        showSaveStatus('✓ Configuration restaurée');
+      }
+    }
+  } catch(e) { console.warn('Images restore failed', e); }
+}
+
+// ─── HOOK save into all interactions ─────────────
+// Wrap all settings panel events to trigger save
+document.getElementById('settings-panel').addEventListener('input', scheduleSave);
+document.getElementById('settings-panel').addEventListener('click', scheduleSave);
+
+// Also save when images are added/removed (already handled inside loadFiles + remove btn)
+const _origLoadFiles = loadFiles;
+window._saveAfterLoad = () => { saveAll(); showSaveStatus('✓ Sauvegardé'); };
+
+// ─── BOOT ────────────────────────────────────────
+restoreFromStorage();
+
 </script>
 </body>
 </html>
