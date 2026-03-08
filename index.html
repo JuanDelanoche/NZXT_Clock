@@ -1,816 +1,1000 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<title>Kraken Z63 Custom Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kraken Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Black+Ops+One&family=Exo+2:wght@100;200;300;400;500;600;700;800;900&family=Bebas+Neue&family=Anton&family=Audiowide&family=Iceland&family=Syncopate:wght@400;700&family=Teko:wght@300;400;500;600;700&family=Nova+Square&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --hours-size: 88px;
+  --minutes-size: 88px;
+  --hours-weight: 900;
+  --minutes-weight: 900;
+  --clock-font: 'Orbitron', monospace;
+  --clock-opacity: 1;
+  --clock-letter-spacing: -2px;
+  --clock-gap: 4px;
+  --stroke-w: 0;
+}
+
 html, body {
-  height: 100%; overflow: hidden;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  user-select: none;
+  width: 320px; height: 320px;
+  overflow: hidden;
   background: #000;
-  image-rendering: pixelated;
-  -webkit-font-smoothing: antialiased;
+  user-select: none;
 }
 
-#bg-container {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: #1a1a1a;
+/* ════ SLIDESHOW ════ */
+#slideshow { position: absolute; inset: 0; }
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  background-repeat: no-repeat;
+  will-change: opacity, transform, filter;
 }
-#bg-layer {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-size: cover; background-position: center;
-  cursor: grab;
-}
-#bg-layer:active { cursor: grabbing; }
-#bg-layer.grayscale { filter: grayscale(100%) saturate(0%) brightness(var(--grayscale-brightness, 1)) contrast(var(--grayscale-contrast, 1)); }
+.slide.active { opacity: 1; }
 
-#kraken-preview {
-  position: fixed; top: 10px; right: 10px; width: 320px; height: 320px;
-  border-radius: 50%; overflow: hidden; background: #1a1a1a;
-  z-index: 12; border: 2px solid #333; display: none;
+/* ════ OVERLAYS ════ */
+#vignette-overlay {
+  position: absolute; inset: 0; z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    transparent 40%, rgba(0,0,0,var(--vignette-strength,0)) 100%);
+  transition: background 0.5s;
 }
-#kraken-preview.active { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-#kraken-preview .bg-layer {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-size: cover; background-position: center;
+#tint-overlay {
+  position: absolute; inset: 0; z-index: 6;
+  pointer-events: none;
+  background: var(--tint-color, transparent);
+  mix-blend-mode: multiply;
+  opacity: var(--tint-opacity, 0);
+  transition: background 0.3s, opacity 0.3s;
 }
-#kraken-preview .content-layer {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
-  opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: scale(min(var(--global-scale, 1), 1));
-}
-#kraken-preview .content-layer.active { opacity: 1; z-index: 2; }
-#kraken-preview #clock-content-preview {
-  text-align: center; color: #fff; gap: var(--hours-spacing, 0px);
-  transform: translateY(var(--clock-y, 0%)) scale(min(var(--global-scale, 1), 1));
-}
-#kraken-preview #hours-preview {
-  font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900);
-  -webkit-text-stroke: var(--text-stroke, 0.5px) black;
-}
-#kraken-preview #minutes-preview {
-  font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700);
-  margin-top: var(--hours-spacing, 0px); -webkit-text-stroke: var(--text-stroke, 0.5px) black;
-}
-#kraken-preview #monitoring-content-preview {
-  display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
-  gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
-  transform: translateY(var(--monitoring-y, 0%)) scale(min(var(--global-scale, 1), 1));
-}
-#kraken-preview .temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
-#kraken-preview .temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
-#kraken-preview .temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
 
-#file-input { display: none; }
-
-.content-layer {
-  position: absolute; top: 0; left: 0; width: 320px; height: 320px;
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
-  opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none; transform: scale(var(--global-scale, 1));
-  left: 50%; top: 50%; transform-origin: center; transform: translate(-50%, -50%) scale(var(--global-scale, 1));
-}
-.content-layer.active { opacity: 1; z-index: 3; pointer-events: auto; }
-#clock-content {
-  text-align: center; color: #fff; gap: var(--hours-spacing, 0px);
-  transform: translate(-50%, calc(-50% + var(--clock-y, 0%))) scale(var(--global-scale, 1));
-  cursor: move;
-}
-#hours { font-size: var(--hours-size, 140px); font-weight: var(--hours-weight, 900); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
-#minutes { font-size: var(--minutes-size, 100px); font-weight: var(--minutes-weight, 700); margin-top: var(--hours-spacing, 0px); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
-#monitoring-content {
-  display: flex !important; flex-direction: row !important; justify-content: center; align-items: center;
-  gap: var(--temp-spacing, 80px); text-align: center; color: #fff; width: 100%;
-  transform: translate(-50%, calc(-50% + var(--monitoring-y, 0%))) scale(var(--global-scale, 1));
-  cursor: move;
-}
-.temp-item { display: flex !important; flex-direction: column; align-items: center; gap: var(--temp-gap, 8px); flex: 1; }
-.temp-label { font-size: var(--label-size, 18px); font-weight: var(--label-weight, 600); opacity: var(--label-opacity, 0.8); -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
-.temp-value { font-size: var(--temp-size, 80px); font-weight: var(--temp-weight, 900); text-shadow: 0 0 var(--glow-intensity, 10px) currentColor; -webkit-text-stroke: var(--text-stroke, 0.5px) black; }
-
-body.negative .content-layer, body.gradient .content-layer {
+/* ════ CLOCK ════ */
+#clock-wrapper {
+  position: absolute;
+  z-index: 10;
   mix-blend-mode: difference;
-  filter: brightness(var(--brightness, 1.2)) contrast(var(--contrast, 1.3)) saturate(var(--saturation, 1.2));
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--clock-gap);
+  cursor: grab;
+  opacity: var(--clock-opacity);
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  transition: gap 0.15s;
+  overflow: visible;
+  filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
 }
-body.grayscale .content-layer {
-  color: white !important; text-shadow: 0 0 var(--glow-intensity, 10px) rgba(255,255,255,0.9);
-  filter: brightness(var(--brightness, 1.2)) contrast(var(--contrast, 1.3)) saturate(var(--saturation, 1.2));
-}
-body.gradient #hours, body.gradient #minutes, body.gradient .temp-value, body.gradient .temp-label {
-  background: linear-gradient(var(--gradient-angle, 45deg), var(--primary-color, #ff6b6b), var(--secondary-color, #4ecdc4), var(--accent-color, #45b7d1), var(--primary-color, #ff6b6b));
-  background-size: var(--gradient-size, 300%) 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; animation: gradient-flow var(--gradient-speed, 4s) linear infinite;
-  filter: brightness(var(--gradient-brightness, 1.2));
-}
-@keyframes gradient-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+#clock-wrapper.dragging { cursor: grabbing; }
 
-#controls {
-  position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); padding: 15px; border-radius: 15px; color: white;
-  display: none; flex-wrap: wrap; gap: 10px; max-width: 95%; z-index: 10; font-size: 12px; max-height: 80vh; overflow-y: auto;
-  border: 1px solid rgba(255,255,255,0.1);
+#hours, #minutes {
+  font-family: var(--clock-font);
+  letter-spacing: var(--clock-letter-spacing);
+  line-height: 1;
+  color: #fff;
+  transition: font-size 0.25s, font-weight 0.25s, font-family 0.25s, letter-spacing 0.2s;
+  pointer-events: none;
+  position: relative;
+  /* Stroke rendered via SVG filter on wrapper — see #svg-filters */
 }
-.control-group { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
-.control-group label { font-weight: 600; opacity: 0.9; font-size: 11px; }
-.control-group input, .control-group select { background: rgba(255,255,255,0.1); border: none; border-radius: 5px; padding: 3px; color: white; font-size: 11px; }
-input[type="range"] { height: 4px; }
-input[type="range"]::-webkit-slider-thumb { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; }
-input[type="color"] { width: 35px; height: 25px; padding: 0; }
-input[type="button"] { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); border: none; padding: 5px 10px; border-radius: 5px; color: white; cursor: pointer; font-size: 10px; }
-.file-upload { background: rgba(255,255,255,0.1); border: 2px dashed rgba(255,255,255,0.3); padding: 6px; border-radius: 5px; text-align: center; cursor: pointer; font-size: 10px; }
-.file-upload:hover { border-color: #4ecdc4; background: rgba(78,205,196,0.1); }
+#hours   { font-size: var(--hours-size);   font-weight: var(--hours-weight); }
+#minutes { font-size: var(--minutes-size); font-weight: var(--minutes-weight); }
 
-.image-viewer { display: flex; align-items: center; gap: 5px; max-width: 100%; }
-.image-viewer img { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; border: 1px solid rgba(255,255,255,0.3); }
-.image-viewer button, .image-viewer select { background: linear-gradient(45deg, #ff6b6b, #4ecdc4); border: none; border-radius: 5px; padding: 5px; color: white; cursor: pointer; font-size: 12px; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; }
-.image-viewer select { width: auto; padding: 2px; height: 25px; }
-.image-viewer button:disabled, .image-viewer select:disabled { opacity: 0.3; cursor: not-allowed; }
-.image-viewer .delete-button { background: #ff6b6b; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; text-align: center; font-size: 12px; }
-
-#bg-duration-value { font-size: 10px; opacity: 0.8; text-align: center; }
-
-#toggle-panel {
-  position: fixed; top: 10px; right: calc(320px + 20px); background: linear-gradient(45deg, rgba(0,0,0,0.9), rgba(78,205,196,0.2));
-  color: white; border: none; padding: 12px 18px; border-radius: 25px; cursor: pointer; font-size: 14px; z-index: 14;
-  min-width: 50px; min-height: 50px; display: block; opacity: 1; transition: all 0.3s;
+/* ════ SETTINGS BTN ════ */
+#settings-btn {
+  position: absolute; top: 10px; right: 10px;
+  z-index: 100; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0.15;
+  transition: opacity 0.3s, transform 0.55s;
+  mix-blend-mode: difference;
 }
-#toggle-panel:hover { opacity: 1; transform: scale(1.05); }
+#settings-btn:hover { opacity: 1; transform: rotate(80deg); }
+#settings-btn svg { width: 17px; height: 17px; fill: #fff; }
 
-/* Media query pour Kraken Z63 (320x320) */
-@media (max-height: 320px), (max-width: 320px) {
-  #kraken-preview { display: none !important; }
-  #toggle-panel { display: none !important; }
-  #controls { display: none !important; }
-  #bg-container, #bg-layer { width: 320px; height: 320px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-  #hours, #hours-preview { font-size: min(var(--hours-size, 140px), 200px) !important; }
-  #minutes, #minutes-preview { font-size: min(var(--minutes-size, 100px), 150px) !important; }
-  .temp-value { font-size: min(var(--temp-size, 80px), 100px) !important; }
-  .temp-label { font-size: min(var(--label-size, 18px), 24px) !important; }
-  #monitoring-content, #monitoring-content-preview { gap: min(var(--temp-spacing, 80px), 40px) !important; }
+/* ════ DROP ZONE ════ */
+#drop-zone {
+  position: absolute; inset: 0; z-index: 50;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85); flex-direction: column; gap: 10px;
+  backdrop-filter: blur(8px);
 }
+#drop-zone.visible { display: flex; }
+#drop-zone.drag-over { background: rgba(5,5,30,0.92); }
+.drop-icon { font-size: 40px; animation: bounce 1.3s ease-in-out infinite; }
+.drop-label { font-family:'Share Tech Mono',monospace; font-size:11px; color:#666; letter-spacing:2px; text-transform:uppercase; text-align:center; line-height:1.8; padding:0 24px; }
+.drop-btn { margin-top:6px; padding:8px 20px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.04); color:#999; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; cursor:pointer; transition:all 0.2s; }
+.drop-btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
+#file-input { display:none; }
+
+/* ════ PROGRESS BAR ════ */
+#progress-bar { position:absolute; bottom:0; left:0; height:2px; background:#fff; z-index:20; mix-blend-mode:difference; width:0%; }
+
+/* ════ HINT ════ */
+#hint {
+  position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+  z-index:15; mix-blend-mode:difference;
+  font-family:'Share Tech Mono',monospace; font-size:8px;
+  color:rgba(255,255,255,0.35); letter-spacing:2px; text-transform:uppercase;
+  opacity:0; transition:opacity 0.4s; pointer-events:none; white-space:nowrap;
+}
+#hint.show { opacity:1; }
+
+/* ══════════════════════════════════════════════
+   SETTINGS PANEL
+══════════════════════════════════════════════ */
+#settings-panel {
+  position:absolute; inset:0; z-index:200;
+  background:rgba(3,3,8,0.97); backdrop-filter:blur(14px);
+  display:none; flex-direction:column; overflow:hidden;
+}
+#settings-panel.open { display:flex; }
+
+.panel-top { display:flex; align-items:center; justify-content:space-between; padding:10px 16px 0; flex-shrink:0; }
+.panel-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:#3a3a3a; }
+.panel-close { width:22px; height:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#3a3a3a; font-size:16px; transition:color 0.2s; }
+.panel-close:hover { color:#fff; }
+
+.tab-bar { display:flex; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,0.06); margin-top:6px; }
+.tab-btn { flex:1; padding:9px 3px; font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#3a3a3a; cursor:pointer; border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s; text-align:center; background:transparent; }
+.tab-btn:hover { color:#777; }
+.tab-btn.active { color:#fff; border-bottom-color:rgba(255,255,255,0.45); }
+
+.tab-content { display:none; flex:1; overflow-y:auto; padding:13px 15px; scrollbar-width:thin; scrollbar-color:#1e1e1e transparent; }
+.tab-content.active { display:block; }
+
+.sg { margin-bottom:12px; }
+.sl { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; color:#333; text-transform:uppercase; margin-bottom:6px; }
+.divider { border:none; border-top:1px solid rgba(255,255,255,0.05); margin:3px 0 12px; }
+
+/* Sliders */
+.sr { display:flex; align-items:center; gap:9px; }
+.sr input[type=range] { flex:1; -webkit-appearance:none; height:2px; background:#222; border-radius:2px; outline:none; cursor:pointer; }
+.sr input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:11px; border-radius:50%; background:#fff; cursor:pointer; transition:transform 0.15s; }
+.sr input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.35); }
+.sv { font-family:'Share Tech Mono',monospace; font-size:9px; color:#4a4a4a; min-width:36px; text-align:right; }
+
+/* Font grid — 3 cols */
+.font-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.font-opt { padding:7px 3px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.02); color:#666; font-size:10px; text-align:center; cursor:pointer; transition:all 0.2s; border-radius:2px; line-height:1.2; }
+.font-opt:hover { border-color:rgba(255,255,255,0.2); color:#ccc; }
+.font-opt.selected { border-color:rgba(255,255,255,0.45); color:#fff; background:rgba(255,255,255,0.07); }
+
+/* Pills */
+.pills { display:flex; gap:4px; flex-wrap:wrap; }
+.pill { padding:5px 7px; border:1px solid rgba(255,255,255,0.07); background:transparent; color:#444; font-family:'Share Tech Mono',monospace; font-size:8px; cursor:pointer; transition:all 0.2s; border-radius:2px; }
+.pill:hover { border-color:rgba(255,255,255,0.25); color:#aaa; }
+.pill.selected { border-color:rgba(255,255,255,0.45); color:#fff; background:rgba(255,255,255,0.07); }
+
+/* Trans grid — 4 cols */
+.trans-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+.trans-opt { padding:8px 3px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.02); color:#555; font-family:'Share Tech Mono',monospace; font-size:7px; letter-spacing:1px; text-align:center; cursor:pointer; transition:all 0.2s; border-radius:2px; line-height:1.3; }
+.trans-opt .trans-icon { font-size:14px; display:block; margin-bottom:3px; }
+.trans-opt:hover { border-color:rgba(255,255,255,0.22); color:#ccc; }
+.trans-opt.selected { border-color:rgba(255,255,255,0.45); color:#fff; background:rgba(255,255,255,0.07); }
+
+/* Color swatches */
+.swatch-row { display:flex; gap:6px; flex-wrap:wrap; }
+.swatch { width:22px; height:22px; border-radius:3px; cursor:pointer; border:2px solid transparent; transition:transform 0.2s, border-color 0.2s; flex-shrink:0; }
+.swatch:hover { transform:scale(1.15); }
+.swatch.selected { border-color:#fff; }
+
+/* Pos grid */
+.pos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.pos-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.02); cursor:pointer; font-size:11px; transition:all 0.2s; border-radius:2px; }
+.pos-cell:hover { border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.05); }
+.pos-cell.selected { border-color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.08); }
+
+/* Image editor */
+.img-editor-card { border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.02); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+.img-editor-header { display:flex; align-items:center; gap:7px; padding:7px 9px; cursor:pointer; }
+.img-editor-header:hover { background:rgba(255,255,255,0.03); }
+.img-editor-card.expanded .img-editor-header { border-bottom:1px solid rgba(255,255,255,0.06); }
+.img-editor-thumb { width:26px; height:26px; object-fit:cover; border-radius:2px; flex-shrink:0; }
+.img-editor-name { flex:1; font-family:'Share Tech Mono',monospace; font-size:8px; color:#444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.img-editor-arrow { color:#2a2a2a; font-size:12px; transition:transform 0.25s; flex-shrink:0; }
+.img-editor-card.expanded .img-editor-arrow { transform:rotate(90deg); }
+.img-editor-remove { color:#2a2a2a; font-size:14px; cursor:pointer; transition:color 0.2s; flex-shrink:0; }
+.img-editor-remove:hover { color:#e44; }
+.img-editor-body { display:none; padding:10px 11px 12px; }
+.img-editor-card.expanded .img-editor-body { display:block; }
+.img-preview-wrap { width:100%; height:72px; background:#0a0a0a; border-radius:2px; overflow:hidden; margin-bottom:9px; border:1px solid rgba(255,255,255,0.05); position:relative; }
+.img-preview-wrap canvas { width:100%; height:100%; }
+.reset-btn { margin-top:7px; width:100%; padding:6px; border:1px dashed rgba(255,255,255,0.1); background:transparent; color:#3a3a3a; font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; cursor:pointer; transition:all 0.2s; }
+.reset-btn:hover { border-color:rgba(255,255,255,0.28); color:#aaa; }
+.add-images-btn { margin-top:8px; width:100%; padding:7px; border:1px dashed rgba(255,255,255,0.1); background:transparent; color:#3a3a3a; font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; cursor:pointer; transition:all 0.2s; }
+.add-images-btn:hover { border-color:rgba(255,255,255,0.28); color:#aaa; }
+
+@keyframes bounce { 0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)} }
+@keyframes glitch1 { 0%,100%{clip-path:inset(0 0 100% 0)}20%{clip-path:inset(20% 0 60% 0);transform:translate(-4px)}40%{clip-path:inset(50% 0 30% 0);transform:translate(4px)}60%{clip-path:inset(80% 0 5% 0);transform:translate(-2px)} }
+@keyframes glitch2 { 0%,100%{clip-path:inset(100% 0 0 0)}20%{clip-path:inset(60% 0 20% 0);transform:translate(4px)}50%{clip-path:inset(30% 0 50% 0);transform:translate(-4px)}80%{clip-path:inset(5% 0 80% 0);transform:translate(2px)} }
 </style>
 </head>
-<body class="negative">
-<input type="file" id="file-input" accept="image/*">
-<div id="bg-container">
-  <div id="bg-layer"></div>
+<body>
+
+<div id="slideshow"></div>
+<div id="vignette-overlay"></div>
+<div id="tint-overlay"></div>
+
+<!-- SVG filter for text stroke that works with mix-blend-mode:difference -->
+<!-- The stroke is white → in difference mode it becomes black = visible outline -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="text-stroke" x="-10%" y="-10%" width="120%" height="120%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="0" result="expanded"/>
+      <feFlood flood-color="white" result="color"/>
+      <feComposite in="color" in2="expanded" operator="in" result="stroke"/>
+      <feMerge>
+        <feMergeNode in="stroke"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
+
+<div id="clock-wrapper">
+  <div id="hours">00</div>
+  <div id="minutes">00</div>
 </div>
-<div id="kraken-preview" class="active">
-  <div class="bg-layer"></div>
-  <div id="clock-content-preview" class="content-layer active">
-    <div id="hours-preview">--</div>
-    <div id="minutes-preview">--</div>
+
+<div id="settings-btn" title="Réglages">
+  <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+</div>
+
+<div id="drop-zone">
+  <div class="drop-icon">🖼️</div>
+  <div class="drop-label">Glisse tes images ici<br>ou clique pour choisir</div>
+  <button class="drop-btn" id="drop-pick-btn">CHOISIR DES FICHIERS</button>
+</div>
+<input type="file" id="file-input" multiple accept="image/*">
+<div id="progress-bar"></div>
+<div id="hint">✦ double-clic pour recentrer</div>
+
+<!-- ═══════ SETTINGS PANEL ═══════ -->
+<div id="settings-panel">
+  <div class="panel-top">
+    <span class="panel-title">⚙ KRAKEN CLOCK</span>
+    <div class="panel-close" id="close-panel">✕</div>
   </div>
-  <div id="monitoring-content-preview" class="content-layer">
-    <div class="temp-item"><div class="temp-label">CPU</div><div class="temp-value" id="cpu-temp-preview">--°</div></div>
-    <div class="temp-item"><div class="temp-label">GPU</div><div class="temp-value" id="gpu-temp-preview">--°</div></div>
+  <div class="tab-bar">
+    <div class="tab-btn active" data-tab="clock">Horloge</div>
+    <div class="tab-btn" data-tab="images">Images</div>
+    <div class="tab-btn" data-tab="slide">Diapo</div>
+    <div class="tab-btn" data-tab="fx">Effets</div>
   </div>
-</div>
-<div id="clock-content" class="content-layer active">
-  <div id="hours">--</div>
-  <div id="minutes">--</div>
-</div>
-<div id="monitoring-content" class="content-layer">
-  <div class="temp-item"><div class="temp-label">CPU</div><div class="temp-value" id="cpu-temp">--°</div></div>
-  <div class="temp-item"><div class="temp-label">GPU</div><div class="temp-value" id="gpu-temp">--°</div></div>
-</div>
-<div id="controls">
-  <div class="control-group"><label>Taille Heures</label><input type="range" id="hours-size" min="5" max="200" value="140"></div>
-  <div class="control-group"><label>Taille Minutes</label><input type="range" id="minutes-size" min="5" max="150" value="100"></div>
-  <div class="control-group"><label>Gras Heures</label><input type="range" id="hours-weight" min="100" max="900" value="900"></div>
-  <div class="control-group"><label>Gras Minutes</label><input type="range" id="minutes-weight" min="100" max="900" value="700"></div>
-  <div class="control-group"><label>Espacement H-M</label><input type="range" id="hours-spacing" min="-100" max="100" value="0"></div>
-  <div class="control-group"><label>Taille Températures</label><input type="range" id="temp-size" min="5" max="100" value="80"></div>
-  <div class="control-group"><label>Taille Labels</label><input type="range" id="label-size" min="5" max="24" value="18"></div>
-  <div class="control-group"><label>Gras Températures</label><input type="range" id="temp-weight" min="100" max="900" value="900"></div>
-  <div class="control-group"><label>Espacement CPU-GPU</label><input type="range" id="temp-spacing" min="-200" max="200" value="80"></div>
-  <div class="control-group"><label>Espacement Temp</label><input type="range" id="temp-gap" min="-50" max="50" value="8"></div>
-  <div class="control-group"><label>Opacité Labels</label><input type="range" id="label-opacity" min="0" max="1" step="0.05" value="0.8"></div>
-  <div class="control-group"><label>Glow Intensité</label><input type="range" id="glow-intensity" min="0" max="20" value="10"></div>
-  <div class="control-group"><label>Contour Texte (px)</label><input type="range" id="text-stroke" min="0" max="2" step="0.1" value="0.5"></div>
-  <div class="control-group"><label>Pos Y Horloge (%)</label><input type="range" id="clock-y" min="-50" max="50" value="0" step="1"></div>
-  <div class="control-group"><label>Pos Y Monitoring (%)</label><input type="range" id="monitoring-y" min="-50" max="50" value="0" step="1"></div>
-  <div class="control-group"><label>Échelle Globale (%)</label><input type="range" id="global-scale" min="50" max="300" value="100" step="5"></div>
-  <div class="control-group"><label>Espacement Global (%)</label><input type="range" id="global-spacing" min="50" max="200" value="100" step="5"></div>
-  <div class="control-group"><label>↻ Reset Positions</label><input type="button" id="reset-positions" value="Centrer"></div>
-  <div class="control-group"><label>📁 Ajouter image</label><div class="file-upload" id="file-upload">Ajouter image</div></div>
-  <div class="control-group"><label>Durée Image (s)</label><input type="range" id="bg-duration" min="5" max="60" step="1" value="10"><span id="bg-duration-value">10 s</span></div>
-  <div class="control-group"><label>Image Actuelle</label><div class="image-viewer" id="image-viewer"><button id="prev-image">&lt;</button><img id="current-image" src="" alt="Image actuelle"><button id="next-image">&gt;</button><button id="delete-image" class="delete-button">✕</button><select id="image-mode"><option value="negative">Négatif</option><option value="gradient">Gradient</option><option value="grayscale">Noir & Blanc</option></select></div></div>
-  <div class="control-group"><label>Pos X Image (%)</label><input type="range" id="bg-x" min="0" max="100" value="50"></div>
-  <div class="control-group"><label>Pos Y Image (%)</label><input type="range" id="bg-y" min="0" max="100" value="50"></div>
-  <div class="control-group"><label>Taille Image (%)</label><input type="range" id="bg-size" min="25" max="300" value="100"></div>
-  <div class="control-group"><label>URL Fond</label><input type="text" id="bg-url" placeholder="URL image"></div>
-  <div class="control-group"><label>Luminosité</label><input type="range" id="brightness" min="0.5" max="3" step="0.1" value="1.2"></div>
-  <div class="control-group"><label>Contraste</label><input type="range" id="contrast" min="0.5" max="3" step="0.1" value="1.3"></div>
-  <div class="control-group"><label>Saturation</label><input type="range" id="saturation" min="0.5" max="2.5" step="0.1" value="1.2"></div>
-  <div class="control-group"><label>Couleur Principale</label><input type="color" id="primary-color" value="#ff6b6b"></div>
-  <div class="control-group"><label>Couleur Secondaire</label><input type="color" id="secondary-color" value="#4ecdc4"></div>
-  <div class="control-group"><label>Couleur Accent</label><input type="color" id="accent-color" value="#45b7d1"></div>
-  <div class="control-group"><label>Angle Gradient</label><input type="range" id="gradient-angle" min="0" max="360" value="45"></div>
-  <div class="control-group"><label>Vitesse (s)</label><input type="range" id="gradient-speed" min="1" max="15" step="0.5" value="4"></div>
-  <div class="control-group"><label>Taille Gradient</label><input type="range" id="gradient-size" min="200" max="800" value="300"></div>
-  <div class="control-group"><label>Luminosité Gradient</label><input type="range" id="gradient-brightness" min="0.5" max="2" step="0.1" value="1.2"></div>
-  <div class="control-group"><label>Lum N&B Fond</label><input type="range" id="grayscale-brightness" min="0.1" max="3" step="0.1" value="1"></div>
-  <div class="control-group"><label>Contraste N&B</label><input type="range" id="grayscale-contrast" min="0.1" max="4" step="0.1" value="1.5"></div>
-</div>
-<button id="toggle-panel">⚙️</button>
+
+  <!-- ─── TAB HORLOGE ─── -->
+  <div class="tab-content active" id="tab-clock">
+
+    <div class="sg">
+      <div class="sl">Police</div>
+      <div class="font-grid" id="font-grid">
+        <div class="font-opt selected" data-font="'Orbitron',monospace"      style="font-family:'Orbitron',monospace">Orbitron</div>
+        <div class="font-opt" data-font="'Bebas Neue',cursive"               style="font-family:'Bebas Neue',cursive">Bebas</div>
+        <div class="font-opt" data-font="'Anton',sans-serif"                  style="font-family:'Anton',sans-serif">Anton</div>
+        <div class="font-opt" data-font="'Audiowide',sans-serif"              style="font-family:'Audiowide',sans-serif">Audio</div>
+        <div class="font-opt" data-font="'Iceland',cursive"                   style="font-family:'Iceland',cursive">Iceland</div>
+        <div class="font-opt" data-font="'Syncopate',sans-serif"              style="font-family:'Syncopate',sans-serif">Syncop</div>
+        <div class="font-opt" data-font="'Teko',sans-serif"                   style="font-family:'Teko',sans-serif">Teko</div>
+        <div class="font-opt" data-font="'Nova Square',cursive"               style="font-family:'Nova Square',cursive">Nova Sq</div>
+        <div class="font-opt" data-font="'Black Ops One',cursive"             style="font-family:'Black Ops One',cursive">BlkOps</div>
+        <div class="font-opt" data-font="'Exo 2',sans-serif"                  style="font-family:'Exo 2',sans-serif">Exo 2</div>
+        <div class="font-opt" data-font="'Rajdhani',sans-serif"               style="font-family:'Rajdhani',sans-serif">Rajdh</div>
+        <div class="font-opt" data-font="'Share Tech Mono',monospace"         style="font-family:'Share Tech Mono',monospace">Mono</div>
+      </div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Taille — Heures</div>
+      <div class="sr"><input type="range" id="hours-size" min="10" max="500" value="88"><span class="sv" id="hours-size-val">88px</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Graisse — Heures</div>
+      <div class="pills" id="hours-wt">
+        <div class="pill" data-w="100">Thin</div>
+        <div class="pill" data-w="300">Light</div>
+        <div class="pill" data-w="400">Reg</div>
+        <div class="pill" data-w="600">Semi</div>
+        <div class="pill" data-w="700">Bold</div>
+        <div class="pill selected" data-w="900">Black</div>
+      </div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Taille — Minutes</div>
+      <div class="sr"><input type="range" id="minutes-size" min="10" max="500" value="88"><span class="sv" id="minutes-size-val">88px</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Graisse — Minutes</div>
+      <div class="pills" id="minutes-wt">
+        <div class="pill" data-w="100">Thin</div>
+        <div class="pill" data-w="300">Light</div>
+        <div class="pill" data-w="400">Reg</div>
+        <div class="pill" data-w="600">Semi</div>
+        <div class="pill" data-w="700">Bold</div>
+        <div class="pill selected" data-w="900">Black</div>
+      </div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Écart Heures / Minutes</div>
+      <div class="sr"><input type="range" id="clock-gap" min="-300" max="200" value="4"><span class="sv" id="clock-gap-val">4px</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Espacement lettres</div>
+      <div class="sr"><input type="range" id="letter-spacing" min="-8" max="30" value="-2"><span class="sv" id="letter-spacing-val">-2px</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Opacité horloge</div>
+      <div class="sr"><input type="range" id="clock-opacity" min="10" max="100" value="100"><span class="sv" id="clock-opacity-val">100%</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Contour des chiffres</div>
+      <div class="sr"><input type="range" id="stroke-width" min="0" max="20" value="0"><span class="sv" id="stroke-width-val">0px</span></div>
+    </div>
+    <hr class="divider">
+    <div class="sg">
+      <div class="sl">Rotation de l'horloge</div>
+      <div class="sr"><input type="range" id="clock-rotate" min="-180" max="180" value="0"><span class="sv" id="clock-rotate-val">0°</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Intensité du halo</div>
+      <div class="sr"><input type="range" id="glow-size" min="0" max="60" value="20"><span class="sv" id="glow-size-val">20px</span></div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Position — Ancrage rapide</div>
+      <div class="pos-grid" id="pos-grid">
+        <div class="pos-cell" data-px="12" data-py="12">↖</div>
+        <div class="pos-cell" data-px="50" data-py="12">↑</div>
+        <div class="pos-cell" data-px="88" data-py="12">↗</div>
+        <div class="pos-cell" data-px="12" data-py="50">←</div>
+        <div class="pos-cell selected" data-px="50" data-py="50">✦</div>
+        <div class="pos-cell" data-px="88" data-py="50">→</div>
+        <div class="pos-cell" data-px="12" data-py="88">↙</div>
+        <div class="pos-cell" data-px="50" data-py="88">↓</div>
+        <div class="pos-cell" data-px="88" data-py="88">↘</div>
+      </div>
+      <div class="sl" style="margin-top:6px;color:#222">Glisse l'horloge · double-clic pour recentrer</div>
+    </div>
+
+  </div>
+
+  <!-- ─── TAB IMAGES ─── -->
+  <div class="tab-content" id="tab-images">
+    <div id="img-editor-list"></div>
+    <button class="add-images-btn" id="add-images-btn">+ AJOUTER DES IMAGES</button>
+  </div>
+
+  <!-- ─── TAB DIAPO ─── -->
+  <div class="tab-content" id="tab-slide">
+
+    <div class="sg">
+      <div class="sl">Durée par image</div>
+      <div class="pills" id="dur-pills">
+        <div class="pill" data-d="3000">3s</div>
+        <div class="pill selected" data-d="6000">6s</div>
+        <div class="pill" data-d="10000">10s</div>
+        <div class="pill" data-d="15000">15s</div>
+        <div class="pill" data-d="30000">30s</div>
+        <div class="pill" data-d="60000">1min</div>
+      </div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Transition</div>
+      <div class="trans-grid" id="trans-grid">
+        <div class="trans-opt selected" data-t="fade">   <span class="trans-icon">◎</span>Fondu</div>
+        <div class="trans-opt" data-t="slide">           <span class="trans-icon">▷</span>Glisse</div>
+        <div class="trans-opt" data-t="slideup">         <span class="trans-icon">△</span>Montée</div>
+        <div class="trans-opt" data-t="zoom">            <span class="trans-icon">⊕</span>Zoom</div>
+        <div class="trans-opt" data-t="zoomin">          <span class="trans-icon">⊗</span>Z.Entr</div>
+        <div class="trans-opt" data-t="flip">            <span class="trans-icon">⟲</span>Flip</div>
+        <div class="trans-opt" data-t="blur">            <span class="trans-icon">◈</span>Flou</div>
+        <div class="trans-opt" data-t="glitch">          <span class="trans-icon">▦</span>Glitch</div>
+      </div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Vitesse de transition</div>
+      <div class="sr"><input type="range" id="trans-speed" min="200" max="3500" value="1400" step="100"><span class="sv" id="trans-speed-val">1.4s</span></div>
+    </div>
+
+  </div>
+
+  <!-- ─── TAB EFFETS ─── -->
+  <div class="tab-content" id="tab-fx">
+
+    <div class="sg">
+      <div class="sl">Teinte de fond</div>
+      <div class="swatch-row" id="tint-swatches">
+        <div class="swatch selected" data-color="none"                  style="background:linear-gradient(135deg,#222,#111);border-color:rgba(255,255,255,0.2)">∅</div>
+        <div class="swatch" data-color="#ff2200"   style="background:#ff2200"></div>
+        <div class="swatch" data-color="#ff6600"   style="background:#ff6600"></div>
+        <div class="swatch" data-color="#ffcc00"   style="background:#ffcc00"></div>
+        <div class="swatch" data-color="#00ff88"   style="background:#00ff88"></div>
+        <div class="swatch" data-color="#00ccff"   style="background:#00ccff"></div>
+        <div class="swatch" data-color="#0033ff"   style="background:#0033ff"></div>
+        <div class="swatch" data-color="#cc00ff"   style="background:#cc00ff"></div>
+        <div class="swatch" data-color="#ff0088"   style="background:#ff0088"></div>
+        <div class="swatch" data-color="#ffffff"   style="background:#fff"></div>
+      </div>
+    </div>
+    <div class="sg">
+      <div class="sl">Intensité de la teinte</div>
+      <div class="sr"><input type="range" id="tint-opacity" min="0" max="80" value="0"><span class="sv" id="tint-opacity-val">0%</span></div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Vignette (assombrissement bords)</div>
+      <div class="sr"><input type="range" id="vignette" min="0" max="100" value="0"><span class="sv" id="vignette-val">0%</span></div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Flou de fond</div>
+      <div class="sr"><input type="range" id="bg-blur" min="0" max="20" value="0"><span class="sv" id="bg-blur-val">0px</span></div>
+    </div>
+    <hr class="divider">
+
+    <div class="sg">
+      <div class="sl">Luminosité de fond</div>
+      <div class="sr"><input type="range" id="bg-bright" min="20" max="200" value="100"><span class="sv" id="bg-bright-val">100%</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Contraste de fond</div>
+      <div class="sr"><input type="range" id="bg-contrast" min="50" max="250" value="100"><span class="sv" id="bg-contrast-val">100%</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Saturation de fond</div>
+      <div class="sr"><input type="range" id="bg-sat" min="0" max="300" value="100"><span class="sv" id="bg-sat-val">100%</span></div>
+    </div>
+
+  </div>
+
+</div><!-- /settings-panel -->
 
 <script>
-const controls = {
-  'hours-size': document.getElementById('hours-size'),
-  'minutes-size': document.getElementById('minutes-size'),
-  'hours-weight': document.getElementById('hours-weight'),
-  'minutes-weight': document.getElementById('minutes-weight'),
-  'hours-spacing': document.getElementById('hours-spacing'),
-  'clock-y': document.getElementById('clock-y'),
-  'temp-size': document.getElementById('temp-size'),
-  'label-size': document.getElementById('label-size'),
-  'temp-weight': document.getElementById('temp-weight'),
-  'temp-spacing': document.getElementById('temp-spacing'),
-  'temp-gap': document.getElementById('temp-gap'),
-  'label-opacity': document.getElementById('label-opacity'),
-  'glow-intensity': document.getElementById('glow-intensity'),
-  'text-stroke': document.getElementById('text-stroke'),
-  'monitoring-y': document.getElementById('monitoring-y'),
-  'global-scale': document.getElementById('global-scale'),
-  'global-spacing': document.getElementById('global-spacing'),
-  'bg-url': document.getElementById('bg-url'),
-  'bg-x': document.getElementById('bg-x'),
-  'bg-y': document.getElementById('bg-y'),
-  'bg-size': document.getElementById('bg-size'),
-  'bg-duration': document.getElementById('bg-duration'),
-  'brightness': document.getElementById('brightness'),
-  'contrast': document.getElementById('contrast'),
-  'saturation': document.getElementById('saturation'),
-  'primary-color': document.getElementById('primary-color'),
-  'secondary-color': document.getElementById('secondary-color'),
-  'accent-color': document.getElementById('accent-color'),
-  'gradient-angle': document.getElementById('gradient-angle'),
-  'gradient-speed': document.getElementById('gradient-speed'),
-  'gradient-size': document.getElementById('gradient-size'),
-  'gradient-brightness': document.getElementById('gradient-brightness'),
-  'grayscale-brightness': document.getElementById('grayscale-brightness'),
-  'grayscale-contrast': document.getElementById('grayscale-contrast'),
-  'image-mode': document.getElementById('image-mode')
-};
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let images       = [];
+let slides       = [];
+let currentIndex = 0;
+let slideDuration= 6000;
+let transSpeed   = 1400;
+let transType    = 'fade';
+let slideTimer   = null;
+let bgBlur       = 0;
+let bgBright     = 100;
+let bgContrast   = 100;
+let bgSat        = 100;
+let clockRotate  = 0;
+let glowSize     = 20;
+let strokeW      = 0;
+const root = document.documentElement;
 
-const clockContent = document.getElementById('clock-content');
-const monitoringContent = document.getElementById('monitoring-content');
-const bgContainer = document.getElementById('bg-container');
-const bgLayer = document.getElementById('bg-layer');
-const krakenPreview = document.getElementById('kraken-preview');
-const previewBgLayer = krakenPreview.querySelector('.bg-layer');
-const clockContentPreview = document.getElementById('clock-content-preview');
-const monitoringContentPreview = document.getElementById('monitoring-content-preview');
-const controlsPanel = document.getElementById('controls');
-const togglePanel = document.getElementById('toggle-panel');
-const fileInput = document.getElementById('file-input');
-const fileUpload = document.getElementById('file-upload');
-const imageViewer = document.getElementById('image-viewer');
-const currentImage = document.getElementById('current-image');
-const prevImage = document.getElementById('prev-image');
-const nextImage = document.getElementById('next-image');
-const deleteImage = document.getElementById('delete-image');
-const bgDurationValue = document.getElementById('bg-duration-value');
+// Clock pos
+let clockPX = 50, clockPY = 50;
 
-let images = [];
-let currentImageIndex = 0;
-let viewerImageIndex = 0;
-let slideshowInterval = null;
-const imageCache = new Map();
-
-function preloadImage(url) {
-  if (imageCache.has(url)) {
-    console.log('Image from cache:', url);
-    return Promise.resolve(true);
-  }
-  return new Promise(resolve => {
-    const img = new Image();
-    img.src = url;
-    img.onload = () => {
-      if (imageCache.size >= 3) {
-        const oldestKey = imageCache.keys().next().value;
-        imageCache.delete(oldestKey);
-        console.log('Removed oldest image from cache:', oldestKey);
-      }
-      imageCache.set(url, true);
-      console.log('Image preloaded:', url);
-      resolve(true);
-    };
-    img.onerror = () => {
-      console.error('Failed to preload image:', url);
-      resolve(false);
-    };
-    setTimeout(() => {
-      if (!imageCache.has(url)) {
-        console.warn('Preload timeout for:', url);
-        resolve(false);
-      }
-    }, 5000);
-  });
-}
-
-async function preloadAllImages() {
-  console.log('Preloading all images:', images.length);
-  for (const img of images) {
-    await preloadImage(img.url);
-  }
-  console.log('All images preloaded');
-}
-
-function loadImageFile(file) {
-  if (!file.type.startsWith('image/')) {
-    console.log('Non-image file skipped:', file.name);
-    return Promise.resolve(null);
-  }
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      console.log('Image loaded:', file.name);
-      resolve(e.target.result);
-    };
-    reader.onerror = () => {
-      console.error('Error reading file:', file.name);
-      resolve(null);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function addImage(file) {
-  console.log('Adding image:', file.name);
-  loadImageFile(file).then(url => {
-    if (url) {
-      const bgSize = parseFloat(controls['bg-size'].value) || 100;
-      images.push({ url, bgX: parseFloat(controls['bg-x'].value) || 50, bgY: parseFloat(controls['bg-y'].value) || 50, bgSize, mode: controls['image-mode'].value || 'negative' });
-      localStorage.setItem('bg-images', JSON.stringify(images));
-      console.log('Images after adding:', images.length, 'bgSize:', bgSize);
-      viewerImageIndex = images.length - 1;
-      updateImageViewer();
-      if (images.length === 1) {
-        currentImageIndex = 0;
-        preloadImage(images[0].url).then(success => {
-          if (success) {
-            applyImageSettings(0);
-            previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
-          } else {
-            bgLayer.style.background = '#1a1a1a';
-            previewBgLayer.style.background = '#1a1a1a';
-          }
-        });
-      }
-      if (images.length > 1) {
-        preloadAllImages().then(() => startSlideshow());
-      }
-      updateStyles();
-    }
-  });
-}
-
-function updateImageViewer() {
-  console.log('Updating image viewer, index:', viewerImageIndex, 'images:', images.length);
-  if (images.length === 0) {
-    currentImage.src = '';
-    currentImage.style.display = 'none';
-    deleteImage.style.display = 'none';
-    prevImage.disabled = true;
-    nextImage.disabled = true;
-    controls['bg-x'].disabled = true;
-    controls['bg-y'].disabled = true;
-    controls['bg-size'].disabled = true;
-    controls['image-mode'].disabled = true;
-  } else {
-    currentImage.src = images[viewerImageIndex].url;
-    currentImage.style.display = 'block';
-    deleteImage.style.display = 'block';
-    prevImage.disabled = viewerImageIndex === 0;
-    nextImage.disabled = viewerImageIndex === images.length - 1;
-    controls['bg-x'].disabled = false;
-    controls['bg-y'].disabled = false;
-    controls['bg-size'].disabled = false;
-    controls['image-mode'].disabled = false;
-    controls['bg-x'].value = images[viewerImageIndex].bgX || 50;
-    controls['bg-y'].value = images[viewerImageIndex].bgY || 50;
-    controls['bg-size'].value = images[viewerImageIndex].bgSize || 100;
-    controls['image-mode'].value = images[viewerImageIndex].mode || 'negative';
-    console.log('Image viewer updated, bgSize:', images[viewerImageIndex].bgSize);
-  }
-}
-
-function applyImageSettings(index) {
-  if (images[index]) {
-    const { url, bgX = 50, bgY = 50, bgSize = 100, mode = 'negative' } = images[index];
-    bgLayer.style.backgroundImage = `url(${url})`;
-    bgLayer.style.backgroundPosition = `${bgX}% ${bgY}%`;
-    bgLayer.style.backgroundSize = `${bgSize}% auto`;
-    previewBgLayer.style.backgroundImage = `url(${url})`;
-    previewBgLayer.style.backgroundPosition = `${bgX}% ${bgY}%`;
-    previewBgLayer.style.backgroundSize = `${bgSize}% auto`;
-    document.body.className = mode;
-    bgLayer.classList.toggle('grayscale', mode === 'grayscale');
-    previewBgLayer.classList.toggle('grayscale', mode === 'grayscale');
-    bgLayer.offsetHeight; // Force reflow
-    krakenPreview.offsetHeight; // Force reflow preview
-    console.log('Applied settings for image', index, 'url:', url, 'position:', `${bgX}% ${bgY}%`, 'size:', `${bgSize}%`, 'mode:', mode);
-  }
-}
-
-function startSlideshow() {
-  stopSlideshow();
-  if (images.length <= 1) {
-    console.log('Slideshow not started: not enough images');
-    return;
-  }
-  const duration = parseInt(controls['bg-duration'].value) * 1000;
-  console.log('Starting slideshow, images:', images.length, 'duration:', duration);
-  slideshowInterval = setInterval(() => {
-    const nextIndex = (currentImageIndex + 1) % images.length;
-    console.log('Slideshow tick, current:', currentImageIndex, 'next:', nextIndex);
-    preloadImage(images[nextIndex].url).then(success => {
-      if (!success) {
-        console.warn('Skipping image due to preload failure');
-        return;
-      }
-      currentImageIndex = nextIndex;
-      const nextImage = images[nextIndex];
-      applyImageSettings(nextIndex);
-      console.log('Switched to image', nextIndex, 'url:', nextImage.url, 'position:', `${nextImage.bgX}% ${nextImage.bgY}%`, 'size:', `${nextImage.bgSize}%`, 'mode:', nextImage.mode);
-    });
-  }, duration);
-}
-
-function stopSlideshow() {
-  if (slideshowInterval) {
-    clearInterval(slideshowInterval);
-    slideshowInterval = null;
-    console.log('Slideshow stopped');
-  }
-}
-
-prevImage.addEventListener('click', () => {
-  if (viewerImageIndex > 0) {
-    viewerImageIndex--;
-    updateImageViewer();
-    console.log('Navigated to previous image, index:', viewerImageIndex);
-  }
-});
-nextImage.addEventListener('click', () => {
-  if (viewerImageIndex < images.length - 1) {
-    viewerImageIndex++;
-    updateImageViewer();
-    console.log('Navigated to next image, index:', viewerImageIndex);
-  }
-});
-deleteImage.addEventListener('click', () => {
-  if (images.length > 0) {
-    console.log('Deleting image at index:', viewerImageIndex);
-    images.splice(viewerImageIndex, 1);
-    localStorage.setItem('bg-images', JSON.stringify(images));
-    viewerImageIndex = Math.min(viewerImageIndex, images.length - 1);
-    if (images.length > 0) {
-      currentImageIndex = Math.min(currentImageIndex, images.length - 1);
-      preloadImage(images[currentImageIndex].url).then(success => {
-        if (success) {
-          applyImageSettings(currentImageIndex);
-          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
-          if (images.length > 1) {
-            preloadAllImages().then(() => startSlideshow());
-          } else {
-            stopSlideshow();
-          }
-        } else {
-          bgLayer.style.background = '#1a1a1a';
-          previewBgLayer.style.background = '#1a1a1a';
-        }
-      });
-    } else {
-      currentImageIndex = 0;
-      bgLayer.style.backgroundImage = '';
-      previewBgLayer.style.backgroundImage = '';
-      stopSlideshow();
-    }
-    updateImageViewer();
-    updateStyles();
-  }
-});
-
-document.getElementById('reset-positions').addEventListener('click', () => {
-  controls['clock-y'].value = '0';
-  controls['monitoring-y'].value = '0';
-  controls['global-scale'].value = '100';
-  controls['global-spacing'].value = '100';
-  if (images.length > 0) {
-    images[viewerImageIndex].bgX = 50;
-    images[viewerImageIndex].bgY = 50;
-    images[viewerImageIndex].bgSize = 100;
-    images[viewerImageIndex].mode = 'negative';
-    controls['bg-x'].value = 50;
-    controls['bg-y'].value = 50;
-    controls['bg-size'].value = 100;
-    controls['image-mode'].value = 'negative';
-    localStorage.setItem('bg-images', JSON.stringify(images));
-    updateImageViewer();
-    if (viewerImageIndex === currentImageIndex) {
-      preloadImage(images[currentImageIndex].url).then(success => {
-        if (success) {
-          applyImageSettings(currentImageIndex);
-          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
-        } else {
-          bgLayer.style.background = '#1a1a1a';
-          previewBgLayer.style.background = '#1a1a1a';
-        }
-      });
-    }
-  }
-  updateStyles();
-  console.log('Positions reset, clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
-});
-
+// ═══════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════
 function updateClock() {
   const now = new Date();
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
-  document.getElementById('hours').textContent = hours;
-  document.getElementById('minutes').textContent = minutes;
-  document.getElementById('hours-preview').textContent = hours;
-  document.getElementById('minutes-preview').textContent = minutes;
-  clockContent.offsetHeight; // Force reflow
-  clockContentPreview.offsetHeight; // Force reflow
-  console.log('Clock updated, hours:', hours, 'minutes:', minutes, 'preview opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value);
+  document.getElementById('hours').textContent   = String(now.getHours()).padStart(2,'0');
+  document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2,'0');
 }
-setInterval(updateClock, 1000); updateClock();
+setInterval(updateClock, 1000);
+updateClock();
 
-let showClock = true;
-function cycleContent() {
-  if (showClock) {
-    clockContent.classList.add('active');
-    monitoringContent.classList.remove('active');
-    clockContentPreview.classList.add('active');
-    monitoringContentPreview.classList.remove('active');
-  } else {
-    monitoringContent.classList.add('active');
-    clockContent.classList.remove('active');
-    monitoringContentPreview.classList.add('active');
-    clockContentPreview.classList.remove('active');
-  }
-  showClock = !showClock;
-  clockContent.offsetHeight; // Force reflow
-  clockContentPreview.offsetHeight; // Force reflow
-  monitoringContent.offsetHeight; // Force reflow
-  monitoringContentPreview.offsetHeight; // Force reflow
-  console.log('Content cycled, showClock:', showClock, 'preview clock active:', clockContentPreview.classList.contains('active'), 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value);
-}
-setInterval(cycleContent, 10000);
+// ═══════════════════════════════════════════
+//  CLOCK DRAG
+// ═══════════════════════════════════════════
+const clockEl = document.getElementById('clock-wrapper');
+let isDragging=false, dStartX, dStartY, dStartPX, dStartPY;
 
-function updateMonitoring(data) {
-  try {
-    const { cpus = [], gpus = [] } = data || {};
-    const cpuTemp = cpus[0]?.temperature ? `${Math.round(cpus[0].temperature)}°` : '--°';
-    const gpuTemp = gpus[0]?.temperature ? `${Math.round(gpus[0].temperature)}°` : '--°';
-    document.getElementById('cpu-temp').textContent = cpuTemp;
-    document.getElementById('gpu-temp').textContent = gpuTemp;
-    document.getElementById('cpu-temp-preview').textContent = cpuTemp;
-    document.getElementById('gpu-temp-preview').textContent = gpuTemp;
-    console.log('Monitoring updated, cpuTemp:', cpuTemp, 'gpuTemp:', gpuTemp);
-  } catch (e) { console.error('Monitoring error:', e); }
-}
-
-function simulateData() {
-  if (!window.nzxt?.v1) {
-    const cpuTemp = `${Math.round(40 + Math.random() * 40)}°`;
-    const gpuTemp = `${Math.round(45 + Math.random() * 50)}°`;
-    document.getElementById('cpu-temp').textContent = cpuTemp;
-    document.getElementById('gpu-temp').textContent = cpuTemp;
-    document.getElementById('cpu-temp-preview').textContent = cpuTemp;
-    document.getElementById('gpu-temp-preview').textContent = gpuTemp;
-  }
-}
-setInterval(simulateData, 3000);
-
-window.nzxt = { v1: { onMonitoringDataUpdate: updateMonitoring, onError: e => console.warn('NZXT error:', e) } };
-
-fileUpload.addEventListener('click', () => fileInput.click());
-fileUpload.addEventListener('dragover', e => { e.preventDefault(); fileUpload.style.borderColor = '#4ecdc4'; });
-fileUpload.addEventListener('dragleave', () => fileUpload.style.borderColor = 'rgba(255,255,255,0.3)');
-fileUpload.addEventListener('drop', e => {
-  e.preventDefault(); fileUpload.style.borderColor = 'rgba(255,255,255,0.3)';
-  if (e.dataTransfer.files.length) addImage(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', e => {
-  if (e.target.files.length) addImage(e.target.files[0]);
-});
-
-function updateStyles() {
-  const globalScale = parseFloat(controls['global-scale'].value) / 100;
-  const globalSpacing = parseFloat(controls['global-spacing'].value) / 100;
-  const styleProps = {
-    '--hours-size': `${controls['hours-size'].value}px`,
-    '--minutes-size': `${controls['minutes-size'].value}px`,
-    '--hours-weight': controls['hours-weight'].value,
-    '--minutes-weight': controls['minutes-weight'].value,
-    '--hours-spacing': `${parseFloat(controls['hours-spacing'].value) * globalSpacing}px`,
-    '--clock-y': `${parseFloat(controls['clock-y'].value) * globalSpacing}%`,
-    '--temp-size': `${controls['temp-size'].value}px`,
-    '--label-size': `${controls['label-size'].value}px`,
-    '--temp-weight': controls['temp-weight'].value,
-    '--label-weight': controls['temp-weight'].value,
-    '--temp-spacing': `${parseFloat(controls['temp-spacing'].value) * globalSpacing}px`,
-    '--temp-gap': `${parseFloat(controls['temp-gap'].value) * globalSpacing}px`,
-    '--label-opacity': controls['label-opacity'].value,
-    '--glow-intensity': `${controls['glow-intensity'].value}px`,
-    '--text-stroke': `${controls['text-stroke'].value}px`,
-    '--monitoring-y': `${parseFloat(controls['monitoring-y'].value) * globalSpacing}%`,
-    '--global-scale': globalScale,
-    '--brightness': controls['brightness'].value,
-    '--contrast': controls['contrast'].value,
-    '--saturation': controls['saturation'].value,
-    '--primary-color': controls['primary-color'].value,
-    '--secondary-color': controls['secondary-color'].value,
-    '--accent-color': controls['accent-color'].value,
-    '--gradient-angle': `${controls['gradient-angle'].value}deg`,
-    '--gradient-speed': `${controls['gradient-speed'].value}s`,
-    '--gradient-size': `${controls['gradient-size'].value}%`,
-    '--gradient-brightness': controls['gradient-brightness'].value,
-    '--grayscale-brightness': controls['grayscale-brightness'].value,
-    '--grayscale-contrast': controls['grayscale-contrast'].value
-  };
-  Object.entries(styleProps).forEach(([key, value]) => document.documentElement.style.setProperty(key, value));
-  bgDurationValue.textContent = `${controls['bg-duration'].value} s`;
-
-  if (images.length > 0 && images[viewerImageIndex]) {
-    const bgSize = parseFloat(controls['bg-size'].value) || 100;
-    images[viewerImageIndex].bgX = parseFloat(controls['bg-x'].value) || 50;
-    images[viewerImageIndex].bgY = parseFloat(controls['bg-y'].value) || 50;
-    images[viewerImageIndex].bgSize = bgSize;
-    images[viewerImageIndex].mode = controls['image-mode'].value || 'negative';
-    localStorage.setItem('bg-images', JSON.stringify(images));
-    console.log('Updated image settings, index:', viewerImageIndex, 'bgSize:', bgSize, 'hours-size:', controls['hours-size'].value, 'minutes-size:', controls['minutes-size'].value);
-    if (viewerImageIndex === currentImageIndex) {
-      preloadImage(images[currentImageIndex].url).then(success => {
-        if (success) {
-          applyImageSettings(currentImageIndex);
-          previewBgLayer.style.backgroundImage = `url(${images[currentImageIndex].url})`;
-        } else {
-          bgLayer.style.background = '#1a1a1a';
-          previewBgLayer.style.background = '#1a1a1a';
-        }
-      });
-    }
-  }
-
-  const url = controls['bg-url'].value.trim();
-  if (url && images.length === 0) {
-    preloadImage(url).then(success => {
-      if (success) {
-        const bgSize = parseFloat(controls['bg-size'].value) || 100;
-        images = [{ url, bgX: 50, bgY: 50, bgSize, mode: 'negative' }];
-        currentImageIndex = 0;
-        viewerImageIndex = 0;
-        applyImageSettings(0);
-        previewBgLayer.style.backgroundImage = `url(${url})`;
-        localStorage.setItem('bg-images', JSON.stringify(images));
-        updateImageViewer();
-        stopSlideshow();
-        console.log('Loaded URL image:', url, 'bgSize:', bgSize);
-      } else {
-        bgLayer.style.background = '#1a1a1a';
-        previewBgLayer.style.background = '#1a1a1a';
-        console.error('Failed to load URL image:', url);
-      }
+function setClockPos(px, py, skipGridUpdate) {
+  clockPX = Math.max(0, Math.min(100, px));
+  clockPY = Math.max(0, Math.min(100, py));
+  clockEl.style.left = clockPX+'%';
+  clockEl.style.top  = clockPY+'%';
+  updateClockFilter(); // preserves rotation in transform
+  if (!skipGridUpdate) {
+    document.querySelectorAll('.pos-cell').forEach(c => {
+      c.classList.toggle('selected',
+        Math.abs(parseFloat(c.dataset.px)-clockPX)<4 &&
+        Math.abs(parseFloat(c.dataset.py)-clockPY)<4);
     });
   }
-
-  Object.keys(controls).forEach(key => localStorage.setItem(key, controls[key].value));
-  clockContent.offsetHeight; // Force reflow
-  krakenPreview.offsetHeight; // Force reflow
-  console.log('Styles updated, hours-size:', getComputedStyle(document.documentElement).getPropertyValue('--hours-size'), 'minutes-size:', getComputedStyle(document.documentElement).getPropertyValue('--minutes-size'), 'global-scale:', styleProps['--global-scale'], 'global-spacing:', globalSpacing, 'preview clock opacity:', getComputedStyle(clockContentPreview).opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value, 'text-stroke:', controls['text-stroke'].value);
+  const isCentered = Math.abs(clockPX-50)<2 && Math.abs(clockPY-50)<2;
+  document.getElementById('hint').classList.toggle('show', !isCentered);
 }
 
-let isDraggingBg = false, isDraggingClock = false, isDraggingMonitoring = false, startX, startY, dragSpeed = 1;
-bgContainer.addEventListener('mousedown', e => {
-  isDraggingBg = true; startX = e.clientX; startY = e.clientY;
-  dragSpeed = 1; // Reset vitesse
-  console.log('Background drag started');
+clockEl.addEventListener('pointerdown', e => {
+  if (document.getElementById('settings-panel').classList.contains('open')) return;
+  isDragging=true; clockEl.classList.add('dragging');
+  clockEl.setPointerCapture(e.pointerId);
+  dStartX=e.clientX; dStartY=e.clientY; dStartPX=clockPX; dStartPY=clockPY;
+  e.preventDefault();
 });
-clockContent.addEventListener('mousedown', e => {
-  if (clockContent.classList.contains('active')) {
-    isDraggingClock = true; startX = e.clientX; startY = e.clientY;
-    dragSpeed = 1;
-    console.log('Clock drag started, clock-y:', controls['clock-y'].value);
-  }
+clockEl.addEventListener('pointermove', e => {
+  if (!isDragging) return;
+  setClockPos(dStartPX+((e.clientX-dStartX)/320)*100, dStartPY+((e.clientY-dStartY)/320)*100);
 });
-monitoringContent.addEventListener('mousedown', e => {
-  if (monitoringContent.classList.contains('active')) {
-    isDraggingMonitoring = true; startX = e.clientX; startY = e.clientY;
-    dragSpeed = 1;
-    console.log('Monitoring drag started, monitoring-y:', controls['monitoring-y'].value);
-  }
-});
-document.addEventListener('mousemove', e => {
-  if (isDraggingBg && images.length > 0) {
-    const dx = (e.clientX - startX) / window.innerWidth * 100 * dragSpeed;
-    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
-    images[currentImageIndex].bgX = Math.max(0, Math.min(100, (images[currentImageIndex].bgX || 50) + dx));
-    images[currentImageIndex].bgY = Math.max(0, Math.min(100, (images[currentImageIndex].bgY || 50) + dy));
-    controls['bg-x'].value = images[currentImageIndex].bgX;
-    controls['bg-y'].value = images[currentImageIndex].bgY;
-    applyImageSettings(currentImageIndex);
-    if (viewerImageIndex === currentImageIndex) updateImageViewer();
-    localStorage.setItem('bg-images', JSON.stringify(images));
-    startX = e.clientX; startY = e.clientY;
-    dragSpeed = Math.min(dragSpeed + 0.02, 3); // Accélère progressivement
-    console.log('Background dragged, bgX:', images[currentImageIndex].bgX, 'bgY:', images[currentImageIndex].bgY);
-  }
-  if (isDraggingClock && clockContent.classList.contains('active')) {
-    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
-    const currentY = parseFloat(controls['clock-y'].value) || 0;
-    controls['clock-y'].value = Math.max(-50, Math.min(50, currentY + dy));
-    updateStyles();
-    startX = e.clientX; startY = e.clientY;
-    dragSpeed = Math.min(dragSpeed + 0.02, 3);
-    console.log('Clock dragged, clock-y:', controls['clock-y'].value);
-  }
-  if (isDraggingMonitoring && monitoringContent.classList.contains('active')) {
-    const dy = (e.clientY - startY) / window.innerHeight * 100 * dragSpeed;
-    const currentY = parseFloat(controls['monitoring-y'].value) || 0;
-    controls['monitoring-y'].value = Math.max(-50, Math.min(50, currentY + dy));
-    updateStyles();
-    startX = e.clientX; startY = e.clientY;
-    dragSpeed = Math.min(dragSpeed + 0.02, 3);
-    console.log('Monitoring dragged, monitoring-y:', controls['monitoring-y'].value);
-  }
-});
-document.addEventListener('mouseup', () => {
-  isDraggingBg = false;
-  isDraggingClock = false;
-  isDraggingMonitoring = false;
-  dragSpeed = 1;
-  console.log('Drag ended');
-});
+clockEl.addEventListener('pointerup', () => { isDragging=false; clockEl.classList.remove('dragging'); });
+clockEl.addEventListener('dblclick', () => setClockPos(50,50));
 
-Object.values(controls).forEach(control => {
-  control.addEventListener('input', () => {
-    updateStyles();
-    if (control.id === 'bg-duration' && images.length > 1) {
-      console.log('Duration changed:', controls['bg-duration'].value);
-      preloadAllImages().then(() => startSlideshow());
+// ═══════════════════════════════════════════
+//  SLIDESHOW — clean state machine
+//  States: IDLE → SHOWING → TRANSITIONING → SHOWING → …
+//  Timer only starts when state = SHOWING (image fully visible)
+// ═══════════════════════════════════════════
+let isTransitioning = false;
+
+function getSlideFilter() {
+  return `blur(${bgBlur}px) brightness(${bgBright}%) contrast(${bgContrast}%) saturate(${bgSat}%)`;
+}
+
+function applyImgStyle(el, img) {
+  el.style.backgroundImage    = `url('${img.dataURL}')`;
+  el.style.backgroundSize     = (img.zoom??100)+'%';
+  el.style.backgroundPosition = `${img.posX??50}% ${img.posY??50}%`;
+  el.style.filter             = getSlideFilter();
+}
+
+function buildSlides() {
+  clearTimeout(slideTimer); clearInterval(slideTimer);
+  isTransitioning = false;
+  const c = document.getElementById('slideshow');
+  c.innerHTML=''; slides=[];
+  images.forEach((img,i)=>{
+    const d=document.createElement('div');
+    d.className='slide'+(i===0?' active':'');
+    d.style.opacity = i===0 ? '1' : '0';
+    d.style.transition = '';
+    applyImgStyle(d,img);
+    c.appendChild(d); slides.push(d);
+  });
+  currentIndex=0;
+  startDisplayTimer();
+}
+
+function updateSlideStyle(i) { if(slides[i]) applyImgStyle(slides[i],images[i]); }
+function updateAllSlideFilters() { slides.forEach(s => s.style.filter=getSlideFilter()); }
+
+/* Start the "stay" timer — called once the slide is fully visible */
+function startDisplayTimer() {
+  clearTimeout(slideTimer); clearInterval(slideTimer);
+  // progress bar
+  const bar=document.getElementById('progress-bar');
+  bar.style.transition='none'; bar.style.width='0%';
+  bar.offsetWidth;
+  bar.style.transition=`width ${slideDuration}ms linear`;
+  bar.style.width='100%';
+  slideTimer = setTimeout(()=>{ if(!isTransitioning) advanceSlide(); }, slideDuration);
+}
+
+function advanceSlide() {
+  if (!slides.length || isTransitioning) return;
+  isTransitioning = true;
+  clearTimeout(slideTimer);
+
+  // stop progress bar immediately
+  const bar=document.getElementById('progress-bar');
+  const computed = getComputedStyle(bar).width;
+  bar.style.transition='none'; bar.style.width=computed;
+
+  const prevIdx = currentIndex;
+  currentIndex = (currentIndex+1) % slides.length;
+  const prev = slides[prevIdx];
+  const next = slides[currentIndex];
+
+  runTransition(prev, next, ()=>{
+    isTransitioning = false;
+    startDisplayTimer();
+  });
+}
+
+/* ─ Single unified transition function ─ */
+function runTransition(prev, next, onDone) {
+  const dur  = transSpeed;
+  const half = Math.round(dur/2);
+
+  // Reset next cleanly
+  next.style.transition = 'none';
+  next.style.transform  = '';
+  next.style.filter     = getSlideFilter();
+  next.style.opacity    = '0';
+  next.style.zIndex     = '2';
+  next.offsetWidth; // reflow
+
+  switch(transType) {
+
+    case 'fade':
+      prev.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.offsetWidth;
+      prev.style.opacity = '0';
+      next.style.opacity = '1';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'slide':
+      next.style.transform  = 'translateX(100%)';
+      next.style.opacity    = '1';
+      next.offsetWidth;
+      prev.style.transition = `transform ${dur}ms cubic-bezier(.77,0,.18,1)`;
+      next.style.transition = `transform ${dur}ms cubic-bezier(.77,0,.18,1)`;
+      prev.style.transform  = 'translateX(-100%)';
+      next.style.transform  = 'translateX(0)';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'slideup':
+      next.style.transform  = 'translateY(100%)';
+      next.style.opacity    = '1';
+      next.offsetWidth;
+      prev.style.transition = `transform ${dur}ms cubic-bezier(.77,0,.18,1)`;
+      next.style.transition = `transform ${dur}ms cubic-bezier(.77,0,.18,1)`;
+      prev.style.transform  = 'translateY(-100%)';
+      next.style.transform  = 'translateY(0)';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'zoom':
+      next.style.transform  = 'scale(1.15)';
+      next.offsetWidth;
+      prev.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.style.transition = `opacity ${dur}ms ease-in-out, transform ${dur}ms ease-out`;
+      prev.style.opacity    = '0';
+      next.style.opacity    = '1';
+      next.style.transform  = 'scale(1)';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'zoomin':
+      next.style.transform  = 'scale(0.85)';
+      next.offsetWidth;
+      prev.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.style.transition = `opacity ${dur}ms ease-in-out, transform ${dur}ms ease-out`;
+      prev.style.opacity    = '0';
+      next.style.opacity    = '1';
+      next.style.transform  = 'scale(1)';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'flip':
+      prev.style.transition = `transform ${half}ms ease-in, opacity ${half}ms ease-in`;
+      prev.style.transform  = 'rotateY(-90deg)';
+      prev.style.opacity    = '0';
+      setTimeout(()=>{
+        next.style.transform  = 'rotateY(90deg)';
+        next.style.opacity    = '0';
+        next.offsetWidth;
+        next.style.transition = `transform ${half}ms ease-out, opacity ${half}ms ease-out`;
+        next.style.transform  = 'rotateY(0)';
+        next.style.opacity    = '1';
+        setTimeout(()=>{ cleanup(prev,next); onDone(); }, half);
+      }, half);
+      break;
+
+    case 'blur':
+      next.style.filter     = `blur(20px) ${getSlideFilter()}`;
+      next.offsetWidth;
+      prev.style.transition = `opacity ${dur}ms ease-in-out, filter ${dur}ms ease-in-out`;
+      next.style.transition = `opacity ${dur}ms ease-in-out, filter ${dur}ms ease-in-out`;
+      prev.style.opacity    = '0';
+      prev.style.filter     = `blur(20px) ${getSlideFilter()}`;
+      next.style.opacity    = '1';
+      next.style.filter     = getSlideFilter();
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+      break;
+
+    case 'glitch': {
+      // Quick flash sequence
+      let step=0, steps=[0,1,0,1,0,1,1,0];
+      const interval = Math.max(40, Math.round(dur/steps.length));
+      const glitchTimer = setInterval(()=>{
+        if(step < steps.length) {
+          prev.style.opacity = steps[step] ? '0':'1';
+          next.style.opacity = steps[step] ? '1':'0';
+          step++;
+        } else {
+          clearInterval(glitchTimer);
+          prev.style.opacity='0'; next.style.opacity='1';
+          cleanup(prev,next); onDone();
+        }
+      }, interval);
+      break;
     }
-  });
-});
 
-togglePanel.addEventListener('click', () => {
-  const isVisible = controlsPanel.style.display === 'flex';
-  controlsPanel.style.display = isVisible ? 'none' : 'flex';
-  togglePanel.textContent = isVisible ? '⚙️' : '✕';
-  krakenPreview.classList.toggle('active', !isVisible);
-  console.log('Toggle panel clicked, controls display:', controlsPanel.style.display, 'preview active:', krakenPreview.classList.contains('active'), 'toggle text:', togglePanel.textContent);
-});
+    default:
+      prev.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.style.transition = `opacity ${dur}ms ease-in-out`;
+      next.offsetWidth;
+      prev.style.opacity='0'; next.style.opacity='1';
+      setTimeout(()=>{ cleanup(prev,next); onDone(); }, dur);
+  }
+}
 
-function loadSettings() {
-  Object.keys(controls).forEach(key => {
-    const saved = localStorage.getItem(key);
-    if (saved !== null) controls[key].value = saved;
-  });
-  const savedImages = localStorage.getItem('bg-images');
-  if (savedImages) {
-    try {
-      images = JSON.parse(savedImages);
-      images = images.map(img => ({
-        url: img.url,
-        bgX: parseFloat(img.bgX) || 50,
-        bgY: parseFloat(img.bgY) || 50,
-        bgSize: parseFloat(img.bgSize) || 100,
-        mode: img.mode || 'negative'
-      }));
-      console.log('Loaded images from localStorage:', images.length, 'first image bgSize:', images[0]?.bgSize);
-      if (images.length > 0) {
-        currentImageIndex = 0;
-        viewerImageIndex = 0;
-        preloadAllImages().then(() => {
-          applyImageSettings(0);
-          previewBgLayer.style.backgroundImage = `url(${images[0].url})`;
-          updateImageViewer();
-          if (images.length > 1) startSlideshow();
-        });
+function cleanup(prev, next) {
+  prev.style.transition = '';
+  prev.style.transform  = '';
+  prev.style.opacity    = '0';
+  prev.style.filter     = getSlideFilter();
+  prev.style.zIndex     = '';
+  next.style.transition = '';
+  next.style.transform  = '';
+  next.style.opacity    = '1';
+  next.style.filter     = getSlideFilter();
+  next.style.zIndex     = '';
+  // update active class
+  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
+  next.classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+//  FILE LOADING
+// ═══════════════════════════════════════════
+function loadFiles(files) {
+  const toLoad=Array.from(files).filter(f=>f.type.startsWith('image/'));
+  if (!toLoad.length) return;
+  let loaded=0;
+  toLoad.forEach(file=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      images.push({name:file.name,dataURL:e.target.result,zoom:100,posX:50,posY:50});
+      if(++loaded===toLoad.length){
+        document.getElementById('drop-zone').classList.remove('visible');
+        buildSlides(); refreshImgEditor();
       }
-    } catch (e) {
-      console.error('Error parsing bg-images from localStorage:', e);
-    }
-  }
-  updateStyles();
-  controlsPanel.style.display = 'none';
-  togglePanel.style.display = 'block';
-  togglePanel.style.opacity = '1';
-  krakenPreview.classList.add('active');
-  clockContent.classList.add('active');
-  clockContentPreview.classList.add('active');
-  console.log('Settings loaded, preview active:', krakenPreview.classList.contains('active'), 'clock preview opacity:', getComputedStyle(clockContentPreview).opacity, 'toggle display:', togglePanel.style.display, 'toggle opacity:', togglePanel.style.opacity, 'clock-y:', controls['clock-y'].value, 'monitoring-y:', controls['monitoring-y'].value, 'text-stroke:', controls['text-stroke'].value);
+    };
+    r.readAsDataURL(file);
+  });
 }
 
-loadSettings();
+document.body.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over');});
+document.body.addEventListener('dragleave',()=>document.getElementById('drop-zone').classList.remove('drag-over'));
+document.body.addEventListener('drop',e=>{e.preventDefault();document.getElementById('drop-zone').classList.remove('drag-over');loadFiles(e.dataTransfer.files);});
+const fileInput=document.getElementById('file-input');
+fileInput.addEventListener('change',()=>{loadFiles(fileInput.files);fileInput.value='';});
+document.getElementById('drop-pick-btn').addEventListener('click',()=>fileInput.click());
+document.getElementById('add-images-btn').addEventListener('click',()=>fileInput.click());
+document.getElementById('drop-zone').classList.add('visible');
+
+// ═══════════════════════════════════════════
+//  PANEL / TABS
+// ═══════════════════════════════════════════
+document.getElementById('settings-btn').addEventListener('click',()=>document.getElementById('settings-panel').classList.add('open'));
+document.getElementById('close-panel').addEventListener('click',()=>document.getElementById('settings-panel').classList.remove('open'));
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── HORLOGE ─────────────────────────────
+document.getElementById('font-grid').addEventListener('click',e=>{
+  const o=e.target.closest('.font-opt'); if(!o) return;
+  document.querySelectorAll('.font-opt').forEach(x=>x.classList.remove('selected'));
+  o.classList.add('selected'); root.style.setProperty('--clock-font',o.dataset.font);
+});
+
+function bindSlider(id, valId, suffix, fn) {
+  document.getElementById(id).addEventListener('input', function() {
+    document.getElementById(valId).textContent = this.value+suffix;
+    fn(this.value);
+  });
+}
+
+bindSlider('hours-size','hours-size-val','px',v=>root.style.setProperty('--hours-size',v+'px'));
+bindSlider('minutes-size','minutes-size-val','px',v=>root.style.setProperty('--minutes-size',v+'px'));
+bindSlider('clock-gap','clock-gap-val','px',v=>root.style.setProperty('--clock-gap',v+'px'));
+bindSlider('letter-spacing','letter-spacing-val','px',v=>root.style.setProperty('--clock-letter-spacing',v+'px'));
+bindSlider('clock-opacity','clock-opacity-val','%',v=>root.style.setProperty('--clock-opacity',v/100));
+function updateClockFilter() {
+  const cw = document.getElementById('clock-wrapper');
+  const glow = glowSize > 0 ? `drop-shadow(0 0 ${glowSize}px rgba(255,255,255,0.55))` : '';
+  const stroke = strokeW > 0 ? 'url(#text-stroke)' : '';
+  cw.style.filter = [stroke, glow].filter(Boolean).join(' ') || 'none';
+  cw.style.transform = `translate(-50%,-50%) rotate(${clockRotate}deg)`;
+}
+
+bindSlider('stroke-width','stroke-width-val','px',v=>{
+  strokeW = parseInt(v);
+  const morph = document.querySelector('#text-stroke feMorphology');
+  if(morph) morph.setAttribute('radius', strokeW>0 ? strokeW : '0');
+  updateClockFilter();
+});
+
+bindSlider('clock-rotate','clock-rotate-val','°',v=>{
+  clockRotate = parseInt(v);
+  updateClockFilter();
+});
+
+bindSlider('glow-size','glow-size-val','px',v=>{
+  glowSize = parseInt(v);
+  updateClockFilter();
+});
+
+function setupWtPills(id, cssVar) {
+  document.getElementById(id).addEventListener('click',e=>{
+    const p=e.target.closest('.pill'); if(!p) return;
+    document.querySelectorAll(`#${id} .pill`).forEach(x=>x.classList.remove('selected'));
+    p.classList.add('selected'); root.style.setProperty(cssVar,p.dataset.w);
+  });
+}
+setupWtPills('hours-wt','--hours-weight');
+setupWtPills('minutes-wt','--minutes-weight');
+
+document.getElementById('pos-grid').addEventListener('click',e=>{
+  const c=e.target.closest('.pos-cell'); if(!c) return;
+  setClockPos(parseFloat(c.dataset.px),parseFloat(c.dataset.py));
+});
+
+// ─── DIAPO ───────────────────────────────
+document.getElementById('dur-pills').addEventListener('click',e=>{
+  const p=e.target.closest('.pill'); if(!p) return;
+  document.querySelectorAll('#dur-pills .pill').forEach(x=>x.classList.remove('selected'));
+  p.classList.add('selected');
+  slideDuration=parseInt(p.dataset.d);
+  if(!isTransitioning) startDisplayTimer(); // restart with new duration
+});
+
+document.getElementById('trans-grid').addEventListener('click',e=>{
+  const o=e.target.closest('.trans-opt'); if(!o) return;
+  document.querySelectorAll('.trans-opt').forEach(x=>x.classList.remove('selected'));
+  o.classList.add('selected'); transType=o.dataset.t;
+});
+
+bindSlider('trans-speed','trans-speed-val','',v=>{transSpeed=parseInt(v);document.getElementById('trans-speed-val').textContent=(v/1000).toFixed(1)+'s';});
+// fix label for trans-speed (it shows raw then fixed)
+document.getElementById('trans-speed').addEventListener('input',function(){
+  document.getElementById('trans-speed-val').textContent=(this.value/1000).toFixed(1)+'s';
+});
+
+// ─── EFFETS ──────────────────────────────
+document.getElementById('tint-swatches').addEventListener('click',e=>{
+  const sw=e.target.closest('.swatch'); if(!sw) return;
+  document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected'));
+  sw.classList.add('selected');
+  if(sw.dataset.color==='none'){
+    root.style.setProperty('--tint-color','transparent');
+    root.style.setProperty('--tint-opacity','0');
+  } else {
+    root.style.setProperty('--tint-color',sw.dataset.color);
+    const cur=parseFloat(document.getElementById('tint-opacity').value)||30;
+    root.style.setProperty('--tint-opacity',cur/100);
+  }
+});
+
+bindSlider('tint-opacity','tint-opacity-val','%',v=>{
+  root.style.setProperty('--tint-opacity',v/100);
+  // Also update CSS var on overlay directly for instant feedback
+  document.getElementById('tint-overlay').style.opacity=v/100;
+});
+
+bindSlider('vignette','vignette-val','%',v=>{
+  root.style.setProperty('--vignette-strength', v/100);
+  document.getElementById('vignette-overlay').style.background=
+    `radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,${v/100}) 100%)`;
+});
+
+bindSlider('bg-blur','bg-blur-val','px',v=>{ bgBlur=parseInt(v); updateAllSlideFilters(); });
+bindSlider('bg-bright','bg-bright-val','%',v=>{ bgBright=parseInt(v); updateAllSlideFilters(); });
+bindSlider('bg-contrast','bg-contrast-val','%',v=>{ bgContrast=parseInt(v); updateAllSlideFilters(); });
+bindSlider('bg-sat','bg-sat-val','%',v=>{ bgSat=parseInt(v); updateAllSlideFilters(); });
+
+// ═══════════════════════════════════════════
+//  IMAGE EDITOR
+// ═══════════════════════════════════════════
+function refreshImgEditor() {
+  const list=document.getElementById('img-editor-list');
+  list.innerHTML='';
+  images.forEach((img,i)=>{
+    const card=document.createElement('div');
+    card.className='img-editor-card';
+    card.innerHTML=`
+      <div class="img-editor-header">
+        <img class="img-editor-thumb" src="${img.dataURL}">
+        <span class="img-editor-name">${img.name}</span>
+        <span class="img-editor-arrow">›</span>
+        <span class="img-editor-remove" data-i="${i}">×</span>
+      </div>
+      <div class="img-editor-body">
+        <div class="img-preview-wrap"><canvas id="pvc-${i}" width="260" height="72"></canvas></div>
+        <div class="sl">Zoom</div>
+        <div class="sr"><input type="range" class="img-zoom" data-i="${i}" min="10" max="400" value="${img.zoom??100}"><span class="sv iz-v">${img.zoom??100}%</span></div>
+        <div class="sl" style="margin-top:6px">Position X</div>
+        <div class="sr"><input type="range" class="img-px" data-i="${i}" min="0" max="100" value="${img.posX??50}"><span class="sv ipx-v">${img.posX??50}%</span></div>
+        <div class="sl" style="margin-top:6px">Position Y</div>
+        <div class="sr"><input type="range" class="img-py" data-i="${i}" min="0" max="100" value="${img.posY??50}"><span class="sv ipy-v">${img.posY??50}%</span></div>
+        <button class="reset-btn" data-i="${i}">↺ RÉINITIALISER</button>
+      </div>`;
+
+    card.querySelector('.img-editor-header').addEventListener('click',e=>{
+      if(e.target.classList.contains('img-editor-remove')) return;
+      card.classList.toggle('expanded');
+      if(card.classList.contains('expanded')) drawPreview(i);
+    });
+    card.querySelector('.img-editor-remove').addEventListener('click',e=>{
+      e.stopPropagation();
+      images.splice(parseInt(e.target.dataset.i),1);
+      if(!images.length){
+        document.getElementById('drop-zone').classList.add('visible');
+        document.getElementById('slideshow').innerHTML='';
+        slides=[]; clearInterval(slideTimer);
+        document.getElementById('progress-bar').style.width='0%';
+      } else buildSlides();
+      refreshImgEditor();
+    });
+
+    function imgSlider(cls, key, suffix, valCls) {
+      card.querySelector(cls).addEventListener('input', function(){
+        const idx=parseInt(this.dataset.i);
+        images[idx][key]=parseInt(this.value);
+        card.querySelector(valCls).textContent=this.value+suffix;
+        updateSlideStyle(idx); drawPreview(idx);
+      });
+    }
+    imgSlider('.img-zoom','zoom','%','.iz-v');
+    imgSlider('.img-px','posX','%','.ipx-v');
+    imgSlider('.img-py','posY','%','.ipy-v');
+
+    card.querySelector('.reset-btn').addEventListener('click',function(){
+      const idx=parseInt(this.dataset.i);
+      images[idx].zoom=100; images[idx].posX=50; images[idx].posY=50;
+      card.querySelector('.img-zoom').value=100;
+      card.querySelector('.img-px').value=50;
+      card.querySelector('.img-py').value=50;
+      card.querySelector('.iz-v').textContent='100%';
+      card.querySelector('.ipx-v').textContent='50%';
+      card.querySelector('.ipy-v').textContent='50%';
+      updateSlideStyle(idx); drawPreview(idx);
+    });
+
+    list.appendChild(card);
+  });
+}
+
+function drawPreview(idx) {
+  const canvas=document.getElementById(`pvc-${idx}`);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const img=images[idx];
+  const cw=canvas.width, ch=canvas.height;
+  ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,cw,ch);
+  const image=new Image();
+  image.onload=()=>{
+    const scale=cw/320;
+    const zoom=(img.zoom??100)/100;
+    const iw=image.width*zoom*scale, ih=image.height*zoom*scale;
+    const px=((img.posX??50)/100)*(cw-iw);
+    const py=((img.posY??50)/100)*(ch-ih);
+    ctx.drawImage(image,px,py,iw,ih);
+  };
+  image.src=img.dataURL;
+}
 </script>
 </body>
 </html>
