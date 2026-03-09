@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kraken Clock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Black+Ops+One&family=Exo+2:wght@100;200;300;400;500;600;700;800;900&family=Bebas+Neue&family=Anton&family=Audiowide&family=Iceland&family=Syncopate:wght@400;700&family=Teko:wght@300;400;500;600;700&family=Nova+Square&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Black+Ops+One&family=Exo+2:wght@100;200;300;400;500;600;700;800;900&family=Bebas+Neue&family=Anton&family=Audiowide&family=Iceland&family=Syncopate:wght@400;700&family=Teko:wght@300;400;500;600;700&family=Nova+Square&family=Chakra+Petch:wght@300;400;500;600;700&family=Russo+One&family=Righteous&family=Oxanium:wght@200;300;400;500;600;700;800&family=Quantico:wght@400;700&family=VT323&family=Major+Mono+Display&family=Michroma&family=Jura:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -64,13 +64,11 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--clock-gap);
   cursor: grab;
   opacity: var(--clock-opacity);
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
   touch-action: none;
-  transition: gap 0.15s;
   overflow: visible;
   filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
 }
@@ -81,13 +79,13 @@ html, body {
   letter-spacing: var(--clock-letter-spacing);
   line-height: 1;
   color: #fff;
-  transition: font-size 0.25s, font-weight 0.25s, font-family 0.25s, letter-spacing 0.2s;
+  transition: font-size 0.25s, font-weight 0.25s, font-family 0.25s, letter-spacing 0.2s, margin-top 0.15s;
   pointer-events: none;
   position: relative;
-  /* Stroke rendered via SVG filter on wrapper — see #svg-filters */
 }
 #hours   { font-size: var(--hours-size);   font-weight: var(--hours-weight); }
-#minutes { font-size: var(--minutes-size); font-weight: var(--minutes-weight); }
+/* margin-top permet les valeurs négatives (chevauchement) contrairement à gap */
+#minutes { font-size: var(--minutes-size); font-weight: var(--minutes-weight); margin-top: var(--clock-gap, 4px); }
 
 /* ════ SETTINGS BTN ════ */
 #settings-btn {
@@ -134,8 +132,9 @@ html, body {
 ══════════════════════════════════════════════ */
 #settings-panel {
   position:absolute; inset:0; z-index:200;
-  background:rgba(3,3,8,0.97); backdrop-filter:blur(14px);
+  background:rgba(3,3,8,0.72); backdrop-filter:blur(22px) saturate(1.4);
   display:none; flex-direction:column; overflow:hidden;
+  border: 1px solid rgba(255,255,255,0.04);
 }
 #settings-panel.open { display:flex; }
 
@@ -153,15 +152,15 @@ html, body {
 .tab-content.active { display:block; }
 
 .sg { margin-bottom:12px; }
-.sl { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; color:#333; text-transform:uppercase; margin-bottom:6px; }
-.divider { border:none; border-top:1px solid rgba(255,255,255,0.05); margin:3px 0 12px; }
+.sl { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; color:#555; text-transform:uppercase; margin-bottom:6px; }
+.divider { border:none; border-top:1px solid rgba(255,255,255,0.07); margin:3px 0 12px; }
 
 /* Sliders */
 .sr { display:flex; align-items:center; gap:9px; }
-.sr input[type=range] { flex:1; -webkit-appearance:none; height:2px; background:#222; border-radius:2px; outline:none; cursor:pointer; }
+.sr input[type=range] { flex:1; -webkit-appearance:none; height:2px; background:rgba(255,255,255,0.12); border-radius:2px; outline:none; cursor:pointer; }
 .sr input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:11px; border-radius:50%; background:#fff; cursor:pointer; transition:transform 0.15s; }
 .sr input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.35); }
-.sv { font-family:'Share Tech Mono',monospace; font-size:9px; color:#4a4a4a; min-width:36px; text-align:right; }
+.sv { font-family:'Share Tech Mono',monospace; font-size:9px; color:#666; min-width:36px; text-align:right; }
 
 /* Font grid — 3 cols */
 .font-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
@@ -293,6 +292,15 @@ html, body {
         <div class="font-opt" data-font="'Exo 2',sans-serif"                  style="font-family:'Exo 2',sans-serif">Exo 2</div>
         <div class="font-opt" data-font="'Rajdhani',sans-serif"               style="font-family:'Rajdhani',sans-serif">Rajdh</div>
         <div class="font-opt" data-font="'Share Tech Mono',monospace"         style="font-family:'Share Tech Mono',monospace">Mono</div>
+        <div class="font-opt" data-font="'Chakra Petch',sans-serif"           style="font-family:'Chakra Petch',sans-serif">Chakra</div>
+        <div class="font-opt" data-font="'Russo One',sans-serif"              style="font-family:'Russo One',sans-serif">Russo</div>
+        <div class="font-opt" data-font="'Righteous',cursive"                 style="font-family:'Righteous',cursive">Right.</div>
+        <div class="font-opt" data-font="'Oxanium',sans-serif"                style="font-family:'Oxanium',sans-serif">Oxanium</div>
+        <div class="font-opt" data-font="'Quantico',sans-serif"               style="font-family:'Quantico',sans-serif">Quantico</div>
+        <div class="font-opt" data-font="'VT323',monospace"                   style="font-family:'VT323',monospace">VT323</div>
+        <div class="font-opt" data-font="'Major Mono Display',monospace"      style="font-family:'Major Mono Display',monospace">Major</div>
+        <div class="font-opt" data-font="'Michroma',sans-serif"               style="font-family:'Michroma',sans-serif">Michroma</div>
+        <div class="font-opt" data-font="'Jura',sans-serif"                   style="font-family:'Jura',sans-serif">Jura</div>
       </div>
     </div>
     <hr class="divider">
@@ -332,8 +340,15 @@ html, body {
     <hr class="divider">
 
     <div class="sg">
-      <div class="sl">Écart Heures / Minutes</div>
-      <div class="sr"><input type="range" id="clock-gap" min="-300" max="200" value="4"><span class="sv" id="clock-gap-val">4px</span></div>
+      <div class="sl">Écart / Chevauchement</div>
+      <div class="sr"><input type="range" id="clock-gap" min="-500" max="200" value="4"><span class="sv" id="clock-gap-val">4px</span></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Chevauchement — priorité</div>
+      <div class="pills" id="overlap-order">
+        <div class="pill selected" data-order="normal">Heures devant</div>
+        <div class="pill" data-order="reverse">Minutes devant</div>
+      </div>
     </div>
     <div class="sg">
       <div class="sl">Espacement lettres</div>
@@ -814,7 +829,21 @@ function bindSlider(id, valId, suffix, fn) {
 
 bindSlider('hours-size','hours-size-val','px',v=>root.style.setProperty('--hours-size',v+'px'));
 bindSlider('minutes-size','minutes-size-val','px',v=>root.style.setProperty('--minutes-size',v+'px'));
-bindSlider('clock-gap','clock-gap-val','px',v=>root.style.setProperty('--clock-gap',v+'px'));
+bindSlider('clock-gap','clock-gap-val','px',v => root.style.setProperty('--clock-gap', v+'px'));
+
+document.getElementById('overlap-order').addEventListener('click', e => {
+  const p = e.target.closest('.pill'); if (!p) return;
+  document.querySelectorAll('#overlap-order .pill').forEach(x => x.classList.remove('selected'));
+  p.classList.add('selected');
+  const hrs = document.getElementById('hours');
+  const min = document.getElementById('minutes');
+  if (p.dataset.order === 'reverse') {
+    hrs.style.zIndex = '1'; min.style.zIndex = '2';
+  } else {
+    hrs.style.zIndex = '2'; min.style.zIndex = '1';
+  }
+  scheduleSave();
+});
 bindSlider('letter-spacing','letter-spacing-val','px',v=>root.style.setProperty('--clock-letter-spacing',v+'px'));
 bindSlider('clock-opacity','clock-opacity-val','%',v=>root.style.setProperty('--clock-opacity',v/100));
 function updateClockFilter() {
@@ -1029,6 +1058,7 @@ function collectSettings() {
     tintOpacity:  document.getElementById('tint-opacity').value,
     vignette:     document.getElementById('vignette').value,
     bgBlur, bgBright, bgContrast, bgSat,
+    overlapOrder: document.querySelector('#overlap-order .pill.selected')?.dataset.order ?? 'normal',
   };
 }
 
@@ -1147,6 +1177,15 @@ function applySettings(s) {
   setSlider('bg-contrast', 'bg-contrast-val', '%',  null, s.bgContrast, v => { bgContrast = parseInt(v); });
   setSlider('bg-sat',      'bg-sat-val',      '%',  null, s.bgSat,      v => { bgSat      = parseInt(v); });
   updateAllSlideFilters();
+
+  if (s.overlapOrder) {
+    document.querySelectorAll('#overlap-order .pill').forEach(p =>
+      p.classList.toggle('selected', p.dataset.order === s.overlapOrder));
+    const hrs = document.getElementById('hours');
+    const min = document.getElementById('minutes');
+    if (s.overlapOrder === 'reverse') { hrs.style.zIndex='1'; min.style.zIndex='2'; }
+    else { hrs.style.zIndex='2'; min.style.zIndex='1'; }
+  }
 }
 
 function bootFromSaved() {
