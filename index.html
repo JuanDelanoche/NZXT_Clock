@@ -24,6 +24,7 @@
   --clock-tint: #ffffff;
   --clock-wash-color: #ffffff;
   --clock-wash-opacity: 0;
+  --clock-contrast-opacity: 0;
 }
 
 html, body {
@@ -61,9 +62,9 @@ html, body {
 }
 
 /* ════ CLOCK ════ */
-#clock-wrapper, #clock-wrapper-invert, #clock-wrapper-stroke, #clock-wrapper-wash {
+#clock-wrapper, #clock-wrapper-invert, #clock-wrapper-stroke, #clock-wrapper-wash,
+#clock-wrapper-contrast-hi, #clock-wrapper-contrast-lo {
   position: absolute;
-  z-index: 10;
   color: var(--clock-tint);
   display: flex;
   flex-direction: column;
@@ -74,6 +75,18 @@ html, body {
   touch-action: none;
   overflow: visible;
 }
+/* z-index explicite. IMPORTANT : le contour "couleur personnalisée" doit
+   rester DEVANT tous les calques à mix-blend-mode "color"/"difference"
+   (remplissage, inversé, fondu, contraste) — ceux-ci lisent l'image en
+   dessous d'eux pour calculer leur teinte, et si on peint quoi que ce
+   soit entre l'image et eux, ils se teintent à partir de CE calque au
+   lieu de l'image (d'où un intérieur uni, sans rapport avec la photo). */
+#clock-wrapper            { z-index: 10; }
+#clock-wrapper-invert     { z-index: 11; }
+#clock-wrapper-wash       { z-index: 12; }
+#clock-wrapper-contrast-hi{ z-index: 13; }
+#clock-wrapper-contrast-lo{ z-index: 14; }
+#clock-wrapper-stroke     { z-index: 15; }
 #clock-wrapper {
   mix-blend-mode: difference;
   cursor: grab;
@@ -95,38 +108,75 @@ html, body {
   mix-blend-mode: normal; /* alpha simple, pas un filtre : effet réel garanti */
   pointer-events: none;
 }
+/* Contraste réel : deux calques gris à 50% superposés, l'un en color-dodge
+   (éclaircit les tons clairs), l'autre en color-burn (assombrit les tons
+   sombres) — l'opacité de chacun (pilotée par le slider) fait office de
+   "dosage" de l'effet, comme une courbe de contraste, sans filtre. */
+#clock-wrapper-contrast-hi, #clock-wrapper-contrast-lo {
+  display: none; /* activé en JS uniquement en mode gris/inversé + contraste > 0 */
+  pointer-events: none;
+}
+#clock-wrapper-contrast-hi { mix-blend-mode: color-dodge; }
+#clock-wrapper-contrast-lo { mix-blend-mode: color-burn; }
 
-#hours, #minutes, #hours-2, #minutes-2, #hours-3, #minutes-3, #hours-4, #minutes-4 {
+#hours, #minutes, #hours-2, #minutes-2, #hours-3, #minutes-3, #hours-4, #minutes-4,
+#hours-5, #minutes-5, #hours-6, #minutes-6 {
   font-family: var(--clock-font);
   letter-spacing: var(--clock-letter-spacing);
+  /* Compense le "trou" ajouté par letter-spacing après le dernier
+     caractère, sinon le texte se recentre visuellement de travers dès
+     qu'on écarte les chiffres (l'espace en trop n'existe qu'à droite). */
+  margin-right: calc(var(--clock-letter-spacing) * -1);
   line-height: 1;
   transition: font-size 0.25s, font-weight 0.25s, font-family 0.25s, letter-spacing 0.2s, margin-top 0.15s;
   pointer-events: none;
   position: relative;
 }
-#hours, #hours-2, #hours-3, #hours-4       { font-size: var(--hours-size);   font-weight: var(--hours-weight); }
+#hours, #hours-2, #hours-3, #hours-4, #hours-5, #hours-6       { font-size: var(--hours-size);   font-weight: var(--hours-weight); }
 /* margin-top permet les valeurs négatives (chevauchement) contrairement à gap */
-#minutes, #minutes-2, #minutes-3, #minutes-4 { font-size: var(--minutes-size); font-weight: var(--minutes-weight); margin-top: var(--clock-gap, 4px); }
+#minutes, #minutes-2, #minutes-3, #minutes-4, #minutes-5, #minutes-6 { font-size: var(--minutes-size); font-weight: var(--minutes-weight); margin-top: var(--clock-gap, 4px); }
 
 /* Contour "suivre le mode" : dessiné sur les calques normaux, avec la
    teinte active -> passe par le même blend mode que le reste (négatif,
-   gris ou gris inversé). Largeur à 0 par défaut = invisible. */
+   gris ou gris inversé). Largeur à 0 par défaut = invisible.
+   paint-order:stroke fill peint le trait AVANT le remplissage (au lieu
+   du défaut fill puis stroke), pour la même raison que le z-index
+   ci-dessus : ça évite que le trait ne morde sur l'intérieur plein de
+   la lettre. */
+#hours, #minutes, #hours-2, #minutes-2, #hours-4, #minutes-4, #hours-5, #minutes-5, #hours-6, #minutes-6 {
+  paint-order: stroke fill;
+}
 #hours, #minutes, #hours-2, #minutes-2 {
   color: var(--clock-tint);
   -webkit-text-stroke: var(--stroke-w-mode) var(--clock-tint);
 }
 /* Contour "couleur personnalisée" : calque dédié, toujours en blend
-   normal, fill invisible, seul le trait autour des lettres apparaît. */
+   normal, fill invisible, seul le trait autour des lettres apparaît. Il
+   est peint DEVANT tous les calques teintés par l'image (cf. z-index
+   ci-dessus) — indispensable pour qu'eux continuent à lire l'image en
+   dessous, pas ce contour. Contrepartie assumée : comme tout contour
+   CSS classique, le trait est centré sur le tracé des lettres (moitié
+   dedans, moitié dehors), y compris sur les petites contre-formes (le
+   trou du "0") — c'est le rendu standard d'un texte "outline". */
 #hours-3, #minutes-3 {
   color: transparent;
   -webkit-text-fill-color: transparent;
   -webkit-text-stroke: var(--stroke-w-custom) var(--stroke-custom-color);
 }
 /* Fondu clair/sombre : remplissage plein blanc ou noir, opacité pilotée
-   par le slider -> mélange linéaire réel (alpha), pas un filtre. */
+   par le slider -> mélange linéaire réel (alpha), pas un filtre. Le même
+   contour (var(--stroke-w-mode)) est repris ici pour que le fondu couvre
+   aussi le contour "suivre le mode", pas seulement le remplissage. */
 #hours-4, #minutes-4 {
   color: var(--clock-wash-color);
   opacity: var(--clock-wash-opacity);
+  -webkit-text-stroke: var(--stroke-w-mode) var(--clock-wash-color);
+}
+/* Contraste réel : gris fixe à 50%, également étendu au contour. */
+#hours-5, #minutes-5, #hours-6, #minutes-6 {
+  color: #808080;
+  opacity: var(--clock-contrast-opacity);
+  -webkit-text-stroke: var(--stroke-w-mode) #808080;
 }
 
 /* ════ SETTINGS BTN ════ */
@@ -292,6 +342,16 @@ html, body {
   <div id="hours-4">00</div>
   <div id="minutes-4">00</div>
 </div>
+<!-- Contraste réel : color-dodge (hautes lumières) + color-burn (ombres),
+     tous deux gris fixe à 50%, opacité pilotée par le slider. -->
+<div id="clock-wrapper-contrast-hi" aria-hidden="true">
+  <div id="hours-5">00</div>
+  <div id="minutes-5">00</div>
+</div>
+<div id="clock-wrapper-contrast-lo" aria-hidden="true">
+  <div id="hours-6">00</div>
+  <div id="minutes-6">00</div>
+</div>
 
 <div id="settings-btn" title="Réglages">
   <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
@@ -363,21 +423,19 @@ html, body {
     </div>
     <div class="sg">
       <div class="sl">Teinte (au lieu du blanc/gris neutre)</div>
-      <div class="swatch-row" id="clock-tint-swatches">
-        <div class="clock-swatch selected" data-color="#ffffff" style="background:#fff"></div>
-        <div class="clock-swatch" data-color="#ff2200" style="background:#ff2200"></div>
-        <div class="clock-swatch" data-color="#ff6600" style="background:#ff6600"></div>
-        <div class="clock-swatch" data-color="#ffcc00" style="background:#ffcc00"></div>
-        <div class="clock-swatch" data-color="#00ff88" style="background:#00ff88"></div>
-        <div class="clock-swatch" data-color="#00ccff" style="background:#00ccff"></div>
-        <div class="clock-swatch" data-color="#0033ff" style="background:#0033ff"></div>
-        <div class="clock-swatch" data-color="#cc00ff" style="background:#cc00ff"></div>
-        <div class="clock-swatch" data-color="#ff0088" style="background:#ff0088"></div>
-      </div>
+      <div class="swatch-row" id="clock-tint-swatches"></div>
+    </div>
+    <div class="sg">
+      <div class="sl">Saturation de la teinte</div>
+      <div class="sr"><input type="range" id="clock-tint-sat" min="0" max="100" value="100"><span class="sv" id="clock-tint-sat-val">100%</span></div>
     </div>
     <div class="sg" id="gray-wash-group" style="display:none">
       <div class="sl">Luminosité — plus sombre ↔ plus clair</div>
       <div class="sr"><input type="range" id="gray-wash" min="-100" max="100" value="0"><span class="sv" id="gray-wash-val">0</span></div>
+    </div>
+    <div class="sg" id="gray-contrast-group" style="display:none">
+      <div class="sl">Contraste</div>
+      <div class="sr"><input type="range" id="gray-contrast" min="0" max="100" value="0"><span class="sv" id="gray-contrast-val">0</span></div>
     </div>
     <hr class="divider">
 
@@ -387,14 +445,7 @@ html, body {
     </div>
     <div class="sg">
       <div class="sl">Graisse — Heures</div>
-      <div class="pills" id="hours-wt">
-        <div class="pill" data-w="100">Thin</div>
-        <div class="pill" data-w="300">Light</div>
-        <div class="pill" data-w="400">Reg</div>
-        <div class="pill" data-w="600">Semi</div>
-        <div class="pill" data-w="700">Bold</div>
-        <div class="pill selected" data-w="900">Black</div>
-      </div>
+      <div class="sr"><input type="range" id="hours-wt" min="100" max="900" step="100" value="900"><span class="sv" id="hours-wt-val">900</span></div>
     </div>
     <hr class="divider">
 
@@ -404,14 +455,7 @@ html, body {
     </div>
     <div class="sg">
       <div class="sl">Graisse — Minutes</div>
-      <div class="pills" id="minutes-wt">
-        <div class="pill" data-w="100">Thin</div>
-        <div class="pill" data-w="300">Light</div>
-        <div class="pill" data-w="400">Reg</div>
-        <div class="pill" data-w="600">Semi</div>
-        <div class="pill" data-w="700">Bold</div>
-        <div class="pill selected" data-w="900">Black</div>
-      </div>
+      <div class="sr"><input type="range" id="minutes-wt" min="100" max="900" step="100" value="900"><span class="sv" id="minutes-wt-val">900</span></div>
     </div>
     <hr class="divider">
 
@@ -428,7 +472,7 @@ html, body {
     </div>
     <div class="sg">
       <div class="sl">Espacement lettres</div>
-      <div class="sr"><input type="range" id="letter-spacing" min="-8" max="30" value="-2"><span class="sv" id="letter-spacing-val">-2px</span></div>
+      <div class="sr"><input type="range" id="letter-spacing" min="-20" max="80" value="-2"><span class="sv" id="letter-spacing-val">-2px</span></div>
     </div>
     <div class="sg">
       <div class="sl">Opacité horloge</div>
@@ -604,12 +648,17 @@ let strokeW      = 0;
 let strokeColorMode   = 'mode'; // 'mode' | 'custom'
 let strokeCustomColor = '#000000';
 let clockColorMode = 'negative'; // 'negative' | 'gray' | 'invert' — valeurs ACTIVES (rendu courant)
-let grayWash     = 0; // -100 (plus sombre) .. 0 (neutre) .. 100 (plus clair)
+let grayWash     = 0;   // -100 (plus sombre) .. 0 (neutre) .. 100 (plus clair)
+let grayContrast = 0;   // 0 (aucun) .. 100 (contraste maximal)
 // Réglages PAR DÉFAUT (panneau global) — utilisés pour toute image qui n'a
 // pas de réglage horloge personnalisé ; ne changent jamais automatiquement
 // au fil du diaporama, seule l'édition du panneau les modifie.
-let clockDefaults = { mode: 'negative', tint: '#ffffff', wash: 0 };
-const CLOCK_TINT_COLORS = ['#ffffff','#ff2200','#ff6600','#ffcc00','#00ff88','#00ccff','#0033ff','#cc00ff','#ff0088'];
+let clockDefaults = { mode: 'negative', tint: '#ffffff', tintSat: 100, wash: 0, contrast: 0 };
+const CLOCK_TINT_COLORS = [
+  '#ffffff','#cccccc','#ff2200','#ff6600','#ff9900','#ffcc00','#ffee00',
+  '#aaff00','#00ff88','#00ffcc','#00ccff','#0099ff','#0033ff','#5500ff',
+  '#9900ff','#cc00ff','#ff00cc','#ff0088','#ff0044',
+];
 const root = document.documentElement;
 
 // Clock pos
@@ -622,14 +671,10 @@ function updateClock() {
   const now = new Date();
   const h = String(now.getHours()).padStart(2,'0');
   const m = String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('hours').textContent    = h;
-  document.getElementById('minutes').textContent  = m;
-  document.getElementById('hours-2').textContent   = h;
-  document.getElementById('minutes-2').textContent = m;
-  document.getElementById('hours-3').textContent   = h;
-  document.getElementById('minutes-3').textContent = m;
-  document.getElementById('hours-4').textContent   = h;
-  document.getElementById('minutes-4').textContent = m;
+  ['', '-2', '-3', '-4', '-5', '-6'].forEach(suf => {
+    document.getElementById('hours'+suf).textContent   = h;
+    document.getElementById('minutes'+suf).textContent = m;
+  });
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -734,6 +779,7 @@ function setClockColorMode(mode) {
   clockDefaults.mode = mode;
   const showGrayControls = mode === 'gray' || mode === 'invert';
   document.getElementById('gray-wash-group').style.display = showGrayControls ? 'block' : 'none';
+  document.getElementById('gray-contrast-group').style.display = showGrayControls ? 'block' : 'none';
   applyEffectiveClockSettings();
 }
 
@@ -746,25 +792,83 @@ function getImageClockOverride(idx) {
 // Calcule les réglages EFFECTIFS pour l'image courante (son override si
 // activé, sinon le défaut global), les applique au rendu, et resynchronise
 // le calque "gris inversé" + le fondu clair/sombre + le halo/contour.
+// ─── Teinte : conversion hex <-> HSL pour pouvoir désaturer une couleur ───
+function hexToHsl(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h=0, s=0; const l = (max+min)/2;
+  if (max !== min) {
+    const d = max-min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch (max) {
+      case r: h = (g-b)/d + (g<b?6:0); break;
+      case g: h = (b-r)/d + 2; break;
+      case b: h = (r-g)/d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h,s,l];
+}
+function hslToHex(h,s,l) {
+  const hue2rgb=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1;
+    if(t<1/6) return p+(q-p)*6*t;
+    if(t<1/2) return q;
+    if(t<2/3) return p+(q-p)*(2/3-t)*6;
+    return p; };
+  let r,g,b;
+  if (s === 0) { r=g=b=l; }
+  else {
+    const q = l<0.5 ? l*(1+s) : l+s-l*s;
+    const p = 2*l-q;
+    r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
+  }
+  const toHex = v => Math.round(v*255).toString(16).padStart(2,'0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+// satPercent: 0 = gris neutre (même luminosité, sans couleur), 100 = teinte d'origine intacte
+function applySaturation(hex, satPercent) {
+  const [h,s,l] = hexToHsl(hex);
+  return hslToHex(h, s * (satPercent/100), l);
+}
+
 function applyEffectiveClockSettings() {
   const ov  = getImageClockOverride(currentIndex);
   const eff = ov || clockDefaults;
   clockColorMode = eff.mode;
-  grayWash       = eff.wash ?? 0;
-  root.style.setProperty('--clock-tint', eff.tint);
+  grayWash       = eff.wash     ?? 0;
+  grayContrast   = eff.contrast ?? 0;
+  const tintSat  = eff.tintSat  ?? 100;
+  root.style.setProperty('--clock-tint', applySaturation(eff.tint, tintSat));
+
   document.getElementById('clock-wrapper-invert').style.display = clockColorMode === 'invert' ? 'flex' : 'none';
-  // Fondu clair/sombre : blend "normal" (alpha réel), visible seulement en
-  // mode gris/inversé, et seulement si l'utilisateur a bougé le slider.
+
   const isGrayish = clockColorMode === 'gray' || clockColorMode === 'invert';
+
+  // Fondu clair/sombre : blend "normal" (alpha réel). Courbe non-linéaire
+  // (racine) pour que l'effet soit déjà bien marqué à mi-course du slider,
+  // plutôt que de n'être visible qu'en fin de course.
   const showWash = isGrayish && grayWash !== 0;
+  const washStrength = Math.pow(Math.abs(grayWash) / 100, 0.6);
   root.style.setProperty('--clock-wash-color', grayWash < 0 ? '#000000' : '#ffffff');
-  root.style.setProperty('--clock-wash-opacity', Math.min(Math.abs(grayWash) / 100, 1));
+  root.style.setProperty('--clock-wash-opacity', Math.min(washStrength, 1));
   document.getElementById('clock-wrapper-wash').style.display = showWash ? 'flex' : 'none';
+
+  // Contraste réel : deux calques superposés (color-dodge éclaircit les
+  // hautes lumières, color-burn assombrit les ombres), chacun avec une
+  // couleur grise fixe (50%) et une opacité pilotée par le slider — une
+  // vraie séparation clair/sombre, pas juste un filtre décoratif.
+  const showContrast = isGrayish && grayContrast > 0;
+  const contrastAmt = Math.min(grayContrast / 100, 1) * 0.6; // plafonné pour rester exploitable
+  root.style.setProperty('--clock-contrast-opacity', contrastAmt);
+  document.getElementById('clock-wrapper-contrast-hi').style.display = showContrast ? 'flex' : 'none';
+  document.getElementById('clock-wrapper-contrast-lo').style.display = showContrast ? 'flex' : 'none';
+
   updateClockFilter();
 }
 
 function newClockOverrideFromDefaults() {
-  return { enabled: true, mode: clockDefaults.mode, tint: clockDefaults.tint, wash: clockDefaults.wash };
+  return { enabled: true, mode: clockDefaults.mode, tint: clockDefaults.tint,
+           tintSat: clockDefaults.tintSat, wash: clockDefaults.wash, contrast: clockDefaults.contrast };
 }
 
 /* Start the "stay" timer — called once the slide is fully visible */
@@ -1019,9 +1123,6 @@ bindSlider('letter-spacing','letter-spacing-val','px',v=>root.style.setProperty(
 bindSlider('clock-opacity','clock-opacity-val','%',v=>root.style.setProperty('--clock-opacity',v/100));
 function updateClockFilter() {
   const cw  = document.getElementById('clock-wrapper');
-  const cwi = document.getElementById('clock-wrapper-invert');
-  const cws = document.getElementById('clock-wrapper-stroke');
-  const cww = document.getElementById('clock-wrapper-wash');
   const glow = glowSize > 0 ? `drop-shadow(0 0 ${glowSize}px rgba(255,255,255,0.55))` : '';
   const isGrayish = clockColorMode === 'gray' || clockColorMode === 'invert';
   const rotation = `translate(-50%,-50%) rotate(${clockRotate}deg)`;
@@ -1030,36 +1131,38 @@ function updateClockFilter() {
   cw.style.transform   = rotation;
   cw.style.mixBlendMode = isGrayish ? 'color' : 'difference';
 
-  // Les 2e/3e/4e calques doivent rester pixel-parfaitement alignés sur le
-  // premier (même position, même rotation, même halo) pour que leur blend
-  // mode respectif (difference / normal, fixes dans le CSS) fonctionne
+  // Tous les calques additionnels doivent rester pixel-parfaitement
+  // alignés sur le premier (même position, même rotation, même halo) pour
+  // que leur blend mode respectif (fixe dans le CSS) fonctionne
   // correctement.
-  cwi.style.left      = cw.style.left;
-  cwi.style.top        = cw.style.top;
-  cwi.style.transform  = rotation;
-  cwi.style.filter     = glow || 'none';
-
-  cws.style.left      = cw.style.left;
-  cws.style.top        = cw.style.top;
-  cws.style.transform  = rotation;
-  cws.style.filter     = glow || 'none';
-
-  cww.style.left      = cw.style.left;
-  cww.style.top        = cw.style.top;
-  cww.style.transform  = rotation;
-  cww.style.filter     = glow || 'none';
+  ['clock-wrapper-invert','clock-wrapper-stroke','clock-wrapper-wash',
+   'clock-wrapper-contrast-hi','clock-wrapper-contrast-lo'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.left      = cw.style.left;
+    el.style.top        = cw.style.top;
+    el.style.transform  = rotation;
+    el.style.filter     = glow || 'none';
+  });
 }
 
 /* ═══ CONTOUR DES CHIFFRES ═══
-   -webkit-text-stroke natif (fini le filtre SVG, source du bug de
-   disparition en mode gris). Deux calques distincts pour deux usages :
-   - "Suivre le mode" (par défaut) : le contour est dessiné directement sur
-     les calques normaux (--stroke-w-mode), avec la teinte active -> il
-     traverse le même blend mode que le reste (négatif / gris / inversé).
+   Deux calques distincts pour deux usages :
+   - "Suivre le mode" (par défaut) : -webkit-text-stroke natif, dessiné
+     directement sur les calques normaux (--stroke-w-mode), avec la teinte
+     active -> il traverse le même blend mode que le reste (négatif / gris
+     / inversé). paint-order:stroke fill (cf. CSS) évite qu'il ne morde sur
+     l'intérieur plein de la lettre — sûr, car fill et stroke sont sur le
+     MÊME élément (même blend mode, même image lue en dessous).
    - "Personnalisée" : le contour "mode" est désactivé (largeur à 0) et un
-     calque dédié (#clock-wrapper-stroke, toujours en blend "normal", donc
-     jamais absorbé par le mode couleur) affiche un contour de couleur
-     fixe, toujours visible quel que soit le fond. */
+     calque SÉPARÉ (#clock-wrapper-stroke, blend "normal", couleur fixe)
+     est peint DEVANT tout le reste (cf. z-index CSS). Impossible de le
+     peindre derrière : les calques teintés par l'image (remplissage,
+     inversé, fondu, contraste) liraient alors CE contour au lieu de
+     l'image comme fond de leur calcul de teinte, et l'intérieur des
+     chiffres perdrait tout rapport avec la photo — c'est exactement ce
+     qui s'est passé avec ma tentative précédente. En contrepartie, ce
+     contour reste un -webkit-text-stroke classique (centré sur le tracé,
+     visible aussi sur les petites contre-formes comme le trou du "0"). */
 function updateStrokeConfig() {
   const useCustom = strokeColorMode === 'custom';
   root.style.setProperty('--stroke-w-mode',   (useCustom ? 0 : strokeW) + 'px');
@@ -1113,6 +1216,18 @@ bindSlider('gray-wash','gray-wash-val','',v=>{
   clockDefaults.wash = parseInt(v);
   applyEffectiveClockSettings();
 });
+bindSlider('gray-contrast','gray-contrast-val','',v=>{
+  clockDefaults.contrast = parseInt(v);
+  applyEffectiveClockSettings();
+});
+bindSlider('clock-tint-sat','clock-tint-sat-val','%',v=>{
+  clockDefaults.tintSat = parseInt(v);
+  applyEffectiveClockSettings();
+});
+// Palette générée depuis CLOCK_TINT_COLORS (source unique, réutilisée pour
+// le panneau global et pour chaque carte image).
+document.getElementById('clock-tint-swatches').innerHTML = CLOCK_TINT_COLORS.map(c =>
+  `<div class="clock-swatch ${c==='#ffffff'?'selected':''}" data-color="${c}" style="background:${c}"></div>`).join('');
 document.getElementById('clock-tint-swatches').addEventListener('click', e => {
   const sw = e.target.closest('.clock-swatch'); if (!sw) return;
   document.querySelectorAll('#clock-tint-swatches .clock-swatch').forEach(x => x.classList.remove('selected'));
@@ -1122,15 +1237,8 @@ document.getElementById('clock-tint-swatches').addEventListener('click', e => {
   scheduleSave();
 });
 
-function setupWtPills(id, cssVar) {
-  document.getElementById(id).addEventListener('click',e=>{
-    const p=e.target.closest('.pill'); if(!p) return;
-    document.querySelectorAll(`#${id} .pill`).forEach(x=>x.classList.remove('selected'));
-    p.classList.add('selected'); root.style.setProperty(cssVar,p.dataset.w);
-  });
-}
-setupWtPills('hours-wt','--hours-weight');
-setupWtPills('minutes-wt','--minutes-weight');
+bindSlider('hours-wt','hours-wt-val','',v=>{ root.style.setProperty('--hours-weight', v); });
+bindSlider('minutes-wt','minutes-wt-val','',v=>{ root.style.setProperty('--minutes-weight', v); });
 
 document.getElementById('pos-grid').addEventListener('click',e=>{
   const c=e.target.closest('.pos-cell'); if(!c) return;
@@ -1200,9 +1308,11 @@ function refreshImgEditor() {
     const card=document.createElement('div');
     card.className='img-editor-card';
     const ov = img.clockOverride;
-    const curMode  = ov?.mode ?? clockDefaults.mode;
-    const curTint  = ov?.tint ?? clockDefaults.tint;
-    const curWash  = ov?.wash ?? clockDefaults.wash;
+    const curMode     = ov?.mode     ?? clockDefaults.mode;
+    const curTint     = ov?.tint     ?? clockDefaults.tint;
+    const curTintSat  = ov?.tintSat  ?? clockDefaults.tintSat;
+    const curWash     = ov?.wash     ?? clockDefaults.wash;
+    const curContrast = ov?.contrast ?? clockDefaults.contrast;
     card.innerHTML=`
       <div class="img-editor-header">
         <img class="img-editor-thumb" src="${img.dataURL}">
@@ -1235,8 +1345,12 @@ function refreshImgEditor() {
           <div class="swatch-row img-clock-tint" data-i="${i}">
             ${CLOCK_TINT_COLORS.map(c => `<div class="clock-swatch ${curTint===c?'selected':''}" data-color="${c}" style="background:${c}"></div>`).join('')}
           </div>
+          <div class="sl" style="margin-top:6px">Saturation de la teinte</div>
+          <div class="sr"><input type="range" class="img-clock-tint-sat" data-i="${i}" min="0" max="100" value="${curTintSat}"><span class="sv igts-v">${curTintSat}%</span></div>
           <div class="sl" style="margin-top:6px">Luminosité — plus sombre ↔ plus clair</div>
           <div class="sr"><input type="range" class="img-gray-wash" data-i="${i}" min="-100" max="100" value="${curWash}"><span class="sv igw-v">${curWash}</span></div>
+          <div class="sl" style="margin-top:6px">Contraste</div>
+          <div class="sr"><input type="range" class="img-gray-contrast" data-i="${i}" min="0" max="100" value="${curContrast}"><span class="sv igc-v">${curContrast}</span></div>
         </div>
       </div>`;
 
@@ -1315,11 +1429,27 @@ function refreshImgEditor() {
       if (idx === currentIndex) applyEffectiveClockSettings();
       scheduleSave();
     });
+    card.querySelector('.img-clock-tint-sat').addEventListener('input', function(){
+      const idx = parseInt(this.dataset.i);
+      images[idx].clockOverride = images[idx].clockOverride || newClockOverrideFromDefaults();
+      images[idx].clockOverride.tintSat = parseInt(this.value);
+      card.querySelector('.igts-v').textContent = this.value+'%';
+      if (idx === currentIndex) applyEffectiveClockSettings();
+      scheduleSave();
+    });
     card.querySelector('.img-gray-wash').addEventListener('input', function(){
       const idx = parseInt(this.dataset.i);
       images[idx].clockOverride = images[idx].clockOverride || newClockOverrideFromDefaults();
       images[idx].clockOverride.wash = parseInt(this.value);
       card.querySelector('.igw-v').textContent = this.value;
+      if (idx === currentIndex) applyEffectiveClockSettings();
+      scheduleSave();
+    });
+    card.querySelector('.img-gray-contrast').addEventListener('input', function(){
+      const idx = parseInt(this.dataset.i);
+      images[idx].clockOverride = images[idx].clockOverride || newClockOverrideFromDefaults();
+      images[idx].clockOverride.contrast = parseInt(this.value);
+      card.querySelector('.igc-v').textContent = this.value;
       if (idx === currentIndex) applyEffectiveClockSettings();
       scheduleSave();
     });
@@ -1360,8 +1490,8 @@ function collectSettings() {
   return {
     hoursSize:     document.getElementById('hours-size').value,
     minutesSize:   document.getElementById('minutes-size').value,
-    hoursWeight:   document.querySelector('#hours-wt .pill.selected')?.dataset.w ?? '900',
-    minutesWeight: document.querySelector('#minutes-wt .pill.selected')?.dataset.w ?? '900',
+    hoursWeight:   document.getElementById('hours-wt').value,
+    minutesWeight: document.getElementById('minutes-wt').value,
     font:          document.querySelector('#font-grid .font-opt.selected')?.dataset.font ?? "'Orbitron',monospace",
     clockGap:      document.getElementById('clock-gap').value,
     letterSpacing: document.getElementById('letter-spacing').value,
@@ -1380,7 +1510,9 @@ function collectSettings() {
     overlapOrder: document.querySelector('#overlap-order .pill.selected')?.dataset.order ?? 'normal',
     clockColorMode: document.querySelector('#clock-color-mode .pill.selected')?.dataset.mode ?? 'negative',
     grayWash:       document.getElementById('gray-wash').value,
+    grayContrast:   document.getElementById('gray-contrast').value,
     clockTint:      document.querySelector('#clock-tint-swatches .clock-swatch.selected')?.dataset.color ?? '#ffffff',
+    clockTintSat:   document.getElementById('clock-tint-sat').value,
   };
 }
 
@@ -1471,10 +1603,8 @@ function applySettings(s) {
   }
   updateStrokeConfig();
   updateClockFilter();
-  if (s.hoursWeight)   { root.style.setProperty('--hours-weight',   s.hoursWeight);
-    document.querySelectorAll('#hours-wt .pill').forEach(p => p.classList.toggle('selected', p.dataset.w === String(s.hoursWeight))); }
-  if (s.minutesWeight) { root.style.setProperty('--minutes-weight', s.minutesWeight);
-    document.querySelectorAll('#minutes-wt .pill').forEach(p => p.classList.toggle('selected', p.dataset.w === String(s.minutesWeight))); }
+  setSlider('hours-wt',   'hours-wt-val',   '', '--hours-weight',   s.hoursWeight);
+  setSlider('minutes-wt', 'minutes-wt-val', '', '--minutes-weight', s.minutesWeight);
   if (s.clockPX !== undefined) setClockPos(s.clockPX, s.clockPY);
   if (s.slideDuration) {
     slideDuration = s.slideDuration;
@@ -1509,6 +1639,8 @@ function applySettings(s) {
   updateAllSlideFilters();
 
   setSlider('gray-wash', 'gray-wash-val', '', null, s.grayWash, v => { clockDefaults.wash = parseInt(v); });
+  setSlider('gray-contrast', 'gray-contrast-val', '', null, s.grayContrast, v => { clockDefaults.contrast = parseInt(v); });
+  setSlider('clock-tint-sat', 'clock-tint-sat-val', '%', null, s.clockTintSat, v => { clockDefaults.tintSat = parseInt(v); });
   if (s.clockTint) {
     document.querySelectorAll('#clock-tint-swatches .clock-swatch').forEach(sw =>
       sw.classList.toggle('selected', sw.dataset.color === s.clockTint));
